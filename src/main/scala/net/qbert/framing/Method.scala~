@@ -1,0 +1,203 @@
+package net.qbert.framing
+
+import net.qbert.framing.Frame
+import net.qbert.handler.MethodHandler
+import net.qbert.network.{FrameWriter, FrameReader}
+
+trait Method extends FramePayload {
+  val typeId = Frame.FRAME_METHOD
+
+  val classId: Int 
+  val methodId: Int
+
+  def argSize(): Int
+  def writeArguments(fw: FrameWriter): Unit
+  def handle(methodHandler: MethodHandler): Unit
+
+  def writeTo(fw: FrameWriter) = {
+    fw.writeShort(classId)
+    fw.writeShort(methodId)
+    writeArguments(fw)
+  }
+
+  def size() = 2 + 2 + argSize
+
+  def generateFrame(channelId: Int): Frame = {
+    Frame(typeId, channelId, this)
+  }
+}
+
+object AMQP {
+  object Connection {
+    object Start {
+      def apply(fr: FrameReader) = {
+        new Start(fr.readOctet, fr.readOctet, fr.readFieldTable, fr.readLongString, fr.readLongString)
+      }
+      
+      def apply(majorVersion: Int, minorVersion: Int, serverProperties: Map[String, Object], mechanisms: String, locales: String) = {
+        new Start(majorVersion, minorVersion, serverProperties, mechanisms, locales)
+      }
+
+    }
+
+    class Start(majorVersion: Int, minorVersion: Int, serverProperties: Map[String, Any], mechanisms: String, locales: String) extends Method {
+      val classId = 10
+      val methodId = 10
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionStart(this)
+
+      def argSize = 1 + 1 + 4 + 4 + 4 + mechanisms.getBytes("utf-8").length + locales.getBytes("utf-8").length
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeOctet(majorVersion)
+        fw.writeOctet(minorVersion)
+        fw.writeFieldTable(serverProperties)
+        fw.writeLongString(mechanisms)
+        fw.writeLongString(locales)
+      }
+
+      override def toString = "#Connection.Start<majorVersion="+majorVersion+", minorVersion="+minorVersion+">"
+
+    }
+
+    object StartOk {
+      def apply(fr: FrameReader) = {
+        new StartOk(fr.readFieldTable, fr.readShortString, fr.readLongString, fr.readShortString)
+      }
+
+      def apply(clientProps: Map[String, Any], mechanisms: String, response: String, locales: String) = {
+        new StartOk(clientProps, mechanisms, response, locales)
+      }
+    }
+
+    class StartOk(clientProps: Map[String, Any], mechanisms: String, response: String, locales: String) extends Method {
+      val classId = 10
+      val methodId = 11
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionStartOk(this)
+
+      def argSize = 1 + 1 + 4 + 4 + 4 + 4
+
+      def writeArguments(fw: FrameWriter) = {}
+
+      override def toString() = "#Connection.StartOk<clientProps="+clientProps+", mechanisms="+mechanisms+", response="+response+">"
+
+    }
+
+    // Connection.Tune
+    object Tune {
+      def apply(fr: FrameReader) = {
+        new Tune(fr.readShort, fr.readLong, fr.readShort())
+      }
+
+      def apply(channelMax: Int, frameMax: Int, heartbeat: Int) = {
+        new Tune(channelMax, frameMax, heartbeat)
+      }
+    }
+
+    class Tune(val channelMax: Int, val frameMax: Int, val heartbeat: Int) extends Method {
+      val classId = 10
+      val methodId = 30
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionTune(this)
+
+      def argSize = 2 + 4 + 2
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(channelMax)
+        fw.writeLong(frameMax)
+        fw.writeShort(heartbeat)
+      }
+
+      override def toString() = "#Connection.Tune<channelMax="+channelMax+", frameMax="+frameMax+", heartbeat="+heartbeat+">"
+
+    }
+
+    // Connection.TuneOk
+    object TuneOk {
+      def apply(fr: FrameReader) = {
+        new TuneOk(fr.readShort, fr.readLong, fr.readShort)
+      }
+
+      def apply(channelMax: Int, frameMax: Int, heartbeat: Int) = {
+        new TuneOk(channelMax, frameMax, heartbeat)
+      }
+
+    }
+
+    class TuneOk(val channelMax: Int, val frameMax: Int, val heartbeat: Int) extends Method {
+      val classId = 10
+      val methodId = 31
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionTuneOk(this)
+
+      def argSize = 2 + 4 + 2
+
+      def writeArguments(fw: FrameWriter) = {}
+
+      override def toString() = "#Connection.TuneOk<channelMax="+channelMax+", frameMax="+frameMax+", heartbeat="+heartbeat+">"
+
+    }
+
+    // Connection.Open
+    object Open {
+      def apply(fr: FrameReader) = {
+        new Open(fr.readShortString, fr.readShortString, fr.readOctet)
+      }
+
+      def apply(virtualHost: String, capabilities: String, insist: Int) = {
+        new Open(virtualHost, capabilities, insist)
+      }
+    }
+
+    class Open(val virtualHost: String, val capabilities: String, val insist: Int) extends Method {
+      val classId = 10
+      val methodId = 40
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionOpen(this)
+
+      def argSize = 2 + virtualHost.getBytes("utf-8").length
+
+      def writeArguments(fw: FrameWriter) = {}
+
+      override def toString() = "#Connection.Open<virtualHost="+virtualHost+">"
+
+    }
+    
+    // Connection.OpenOk
+    object OpenOk {
+      val classId = 10
+      val methodId = 41
+
+      def apply(fr: FrameReader) = {
+        new OpenOk(fr.readShortString)
+      }
+
+      def apply(knownHosts: String) = {
+        new OpenOk(knownHosts)
+      }
+    }
+
+    class OpenOk(val knownHosts: String) extends Method {
+      val classId = 10
+      val methodId = 41
+
+      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionOpenOk(this)
+
+      def argSize = 2 + knownHosts.getBytes("utf-8").length
+
+      def writeArguments(fw: FrameWriter) = {}
+
+      override def toString() = "#Connection.Open<virtualHost="+knownHosts+">"
+
+    }
+    
+  }
+
+}
+
+
+
+
+
+

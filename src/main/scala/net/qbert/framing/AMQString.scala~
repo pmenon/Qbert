@@ -1,0 +1,23 @@
+package net.qbert.framing
+
+import net.qbert.network.{ CanWriteTo, FrameWriter }
+
+object AMQShortString {
+  implicit def stringToShortSting(s: String):AMQShortString = AMQShortString(s)
+}
+
+class AMQShortString(val s: String) extends CanWriteTo with HasSize {
+  def size() = 2 + s.getBytes("utf-8").length
+  def writeTo(fw: FrameWriter) = {
+    fw.writeShort(size())
+    fw.writeBytes(s.getBytes("utf-8"))
+  }
+}
+
+class AMQLongString(val longString: Array[Byte]) extends CanWriteTo with HasSize {
+  def size() = 4 + longString.length
+  def writeTo(fw: FrameWriter) = {
+    fw.writeLong(size())
+    fw.writeBytes(longString)
+  }
+}
