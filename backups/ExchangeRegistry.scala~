@@ -1,7 +1,0 @@
-package net.qbert.exchange
-
-import net.qbert.logging.Logging
-import net.qbert.util.Registry
-
-class ExchangeRegistry extends Registry[String, AMQExchage] with Logging {
-  def register(exchage: AMQExchange): Unit = register(exchange.
