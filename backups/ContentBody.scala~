@@ -1,0 +1,3 @@
+package net.qbert.framing
+
+class ContentBody extends FramePayload

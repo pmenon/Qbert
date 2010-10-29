@@ -1,3 +1,3 @@
 package net.qbert.protocol
 
-case class ProtocolVersion(majorVersion: Int, minorVersion: Int)
+case class ProtocolVersion(major: Byte, minor: Byte)

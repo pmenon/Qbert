@@ -34,8 +34,9 @@ case class AwaitingContentBody() extends State {
   def next() = State.opened
 }
 
-class StateManager() {
-  private var state: State = State.waitingConnection
+class StateManager(private var state: State) {
+  //private var state: State = State.waitingConnection
+  def this() = this(State.waitingConnection)
 
   def changeState(newState: State) = state = newState
   def nextNaturalState() = state = state next

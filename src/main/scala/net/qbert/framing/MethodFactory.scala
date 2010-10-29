@@ -1,32 +1,88 @@
 package net.qbert.framing
 
 import net.qbert.logging.Logging
-import net.qbert.network.FrameReader
+import net.qbert.protocol.ProtocolVersion
+import net.qbert.network.{ CanReadFrom, FrameReader }
 
-trait MethodFactory {
-  def createMethodFrom(fr: FrameReader): Option[FramePayload]
-  //def createMethodWith(classId: Int, methodId: Int): Option[FramePayload]
+object MethodFactory {
+  private val map:Map[(Int, Int), MethodFactory] = Map((0,9) -> new MethodFactory_091,
+                        (0,8) -> new MethodFactory_081)
+  def createWithVersion(pv: ProtocolVersion): MethodFactory = map.get((pv.major, pv.minor)).getOrElse {
+    error("There is no factory for protocol version: " + pv)
+    map.get((0,9)).get
+  }
+}
+
+trait MethodFactory extends CanReadFrom[Option[Method]] {
+  def createMethodFrom(fr: FrameReader): Option[Method]
+  def readFrom(fr: FrameReader) = createMethodFrom(fr)
+
+  def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString): AMQP.Connection.Start
+  def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short): AMQP.Connection.Tune
+  def createConnectionOpenOk(knownHosts: AMQShortString): AMQP.Connection.OpenOk
+  def createChannelOpenOk(channelId: AMQLongString): AMQP.Channel.OpenOk
 }
 
 class MethodFactory_091 extends MethodFactory with Logging {
+  import net.qbert.framing.amqp_091.AMQP_091._
+
   def createMethodFrom(fr: FrameReader) = {
     val classId = fr.readShort
     val methodId = fr.readShort
 
     val method = (classId, methodId) match {
-      case (10, 10) => Some(AMQP.Connection.Start(fr))
-      case (10, 11) => Some(AMQP.Connection.StartOk(fr))
-      case (10, 30) => Some(AMQP.Connection.Tune(fr))
-      case (10, 31) => Some(AMQP.Connection.TuneOk(fr))
-      case (10, 40) => Some(AMQP.Connection.Open(fr))
-      case (10, 41) => Some(AMQP.Connection.OpenOk(fr))
+      case (10, 10) => Some(Connection.Start(fr))
+      case (10, 11) => Some(Connection.StartOk(fr))
+      case (10, 30) => Some(Connection.Tune(fr))
+      case (10, 31) => Some(Connection.TuneOk(fr))
+      case (10, 40) => Some(Connection.Open(fr))
+      case (10, 41) => Some(Connection.OpenOk(fr))
 
-      case (20, 10) => Some(AMQP.Channel.Open(fr))
-      case (20, 11) => Some(AMQP.Channel.OpenOk(fr))
+      case (20, 10) => Some(Channel.Open(fr))
+      case (20, 11) => Some(Channel.OpenOk(fr))
 
       case _ => info("No method matches classId={} methodId={}", classId, methodId); None
     }
 
     method
+  }
+
+  def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString) = {
+    Connection.Start(version.major, version.minor, props, mechanisms, locales)
+  }
+
+  def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short) = {
+    Connection.Tune(channelMax, frameMax, heartbeat)
+  }
+
+  def createConnectionOpenOk(knownHosts: AMQShortString) = {
+    Connection.OpenOk(knownHosts)
+  }
+
+  def createChannelOpenOk(channelId: AMQLongString) = {
+    Channel.OpenOk(channelId)
+  }
+  
+}
+
+class MethodFactory_081 extends MethodFactory with Logging {
+  import net.qbert.framing.amqp_091.AMQP_091._
+
+  def createMethodFrom(fr: FrameReader) = None
+
+  def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString) = {
+    Connection.Start(version.major, version.minor, props, mechanisms, locales)
+  }
+
+  def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short) = {
+    Connection.Tune(channelMax, frameMax, heartbeat)
+  }
+
+  def createConnectionOpenOk(knownHosts: AMQShortString) = {
+    Connection.OpenOk(knownHosts)
+  }
+
+  def createChannelOpenOk(channelId: AMQLongString) = {
+    Channel.OpenOk(channelId)
   }
 }

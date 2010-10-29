@@ -1,0 +1,4 @@
+package net.qbert.store
+
+trait Store {
+  def store(o: AnyRef)

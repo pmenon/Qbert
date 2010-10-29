@@ -20,6 +20,7 @@ class AMQShortString(val s: String) extends CanWriteTo with HasSize {
     fw.writeShort(bytes.length)
     fw.writeBytes(bytes)
   }
+  def get() = s
 }
 
 object AMQLongString extends CanReadFrom[AMQLongString] {

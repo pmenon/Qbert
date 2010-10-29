@@ -1,0 +1,28 @@
+package net.qbert.transaction
+
+trait Transactional {
+  val journal: TransactionJournal
+
+}
+
+trait Committable {
+  def commit(): Unit
+}
+
+trait Abortable {
+  def abort(): Unit
+}
+
+trait ServerAction extends Committable with Abortable
+
+trait TransactionJournal {
+  def newTransaction(): Transaction
+
+  trait Transaction {
+    
+    def add(action: ServerAction): Unit
+    def commitTransaction(): Unit
+    def abortTransaction(): Unit
+  }
+
+}

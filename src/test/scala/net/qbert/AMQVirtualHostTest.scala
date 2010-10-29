@@ -36,9 +36,9 @@ class AMQVirtualHostTest extends Specification {
 
       exchange bind(queue, "test-1")
 
-      channel frameReceived AMQP.Basic.Publish("exch1", "test-1")
-      channel frameReceived ContentHeader()
-      channel frameReceived ContentBody("Simple Body".getBytes("utf-8"))
+      channel publishReceived AMQP.Basic.Publish("exch1", "test-1")
+      channel contentHeaderReceived ContentHeader()
+      channel contentBodyReceived ContentBody("Simple Body".getBytes("utf-8"))
 
       val m = queue dequeue
       */

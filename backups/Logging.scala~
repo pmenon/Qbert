@@ -1,0 +1,5 @@
+package net.qbert.logging
+
+trait Logging {
+  val log = LoggerFactory.
+}

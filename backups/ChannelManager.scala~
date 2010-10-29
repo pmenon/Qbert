@@ -1,0 +1,32 @@
+package net.qbert.channel
+
+import net.qbert.connection.AMQConnection
+
+import java.util.concurrent.atomic
+import scala.collection.mutable
+
+trait ChannelManagerMixin extends ChannelManager { self: { val conn: AMQConnection} =>
+  
+  def createChannel(): AMQChannel = {
+    createChannel(self.conn)
+  }
+
+}
+
+class ChannelManager {
+  val channelMap = new mutable.HashMap[Long, AMQChannel]()
+  val idProduer = new atomic.AtomicLong(0)
+
+  def channel(channelId: Long) = getChannel(channelId)
+
+  def getChannel(channelId: Long): Option[AMQChannel] = channelMap.get(channelId)
+
+  def createChannel(conn: AMQConnection): AMQChannel = {
+    val channelId = idProduer.getAndIncrement
+    val channel = new AMQChannel(channelId, conn)
+    registerChannel(channel)
+    channel
+  }
+
+  def registerChannel(channel: AMQChannel) = channelMap.put(channel.channelId, channel)
+}

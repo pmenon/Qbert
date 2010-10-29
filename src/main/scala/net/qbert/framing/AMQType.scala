@@ -103,7 +103,7 @@ case class ArrayType(array: AMQArray) extends AMQType {
     fw.writeArray(array)
   }
 }
-case class FieldTableType(table: FieldTable) extends AMQType {
+case class FieldTableType(table: AMQFieldTable) extends AMQType {
   def size() = 1 + table.size
   def writeTo(fw: FrameWriter) = {
     fw.writeOctet('F')

@@ -1,0 +1,66 @@
+package net.qbert.framing
+
+import net.qbert.logging.Logging
+import net.qbert.framing.MethodFactory_091
+import net.qbert.network.{FrameReader, FrameWriter}
+
+class AMQFrameEncoder {
+  def encode(frame: Frame) = {
+    val writer = new FrameWriter(frame.size)    
+    frame.writeTo(writer)
+    writer.frame
+  }
+}
+
+trait AMQFrameDecoder {
+  def decode(fr: FrameReader): Option[AMQDataBlock]
+}
+
+class AMQFrameDecoderImpl extends AMQFrameDecoder with Logging {
+  def decode(fr: FrameReader): Option[AMQDataBlock] = {
+    val availablePayload = fr.readableBytes - (1 + 2 + 4 + 1)
+    if(availablePayload < 0) return None
+
+    val typeId = fr.readOctet
+    val channel = fr.readShort
+    val size = fr.readLong
+
+    info("typeId={}, channel={}, size={}", typeId, channel, size)
+
+    if(availablePayload < size) return None
+
+    val m = new MethodFactory_091().convertFrom(fr)
+    m match {
+      case Some(method) => Some(new Frame(typeId, channel, size, method))
+      case None => None
+    }
+
+    val frameDelimiter = fr.readOctet
+    if(frameDelimiter eq Frame.Fra
+  }
+}
+
+class AMQProtocolInitializationDecoderImpl extends AMQFrameDecoder {
+  def decode(fr: FrameReader): Option[AMQDataBlock] = {
+    if(fr.readableBytes < 4 + 1 + 1 + 1 + 1) return None
+
+    val header = Array.ofDim[Byte](4)
+    fr.readBytes(header)
+    val classId = fr.readOctet
+    val instance = fr.readOctet
+    val major = fr.readOctet
+    val minor = fr.readOctet
+
+    Some(new ProtocolInitialization(header, classId, instance, major, minor))
+  }
+}
+
+
+
+
+
+
+
+
+
+

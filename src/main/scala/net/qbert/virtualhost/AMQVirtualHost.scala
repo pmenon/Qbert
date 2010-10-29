@@ -12,7 +12,7 @@ object AMQVirtualHost {
   def apply(name: String) = new AMQVirtualHost(name)
 }
 
-class AMQVirtualHost(name: String) {
+class AMQVirtualHost(val name: String) {
   val queueRegistry = new QueueRegistry
   val exchangeRegistry = new ExchangeRegistry
 

@@ -2,33 +2,33 @@ package net.qbert.handler
 
 import net.qbert.channel.ChannelManager
 import net.qbert.connection.AMQConnection
-import net.qbert.state.{State, StateManager}
-import net.qbert.framing.{AMQP, FramePayload, Method, AMQLongString, AMQShortString}
+import net.qbert.state.{State, StateAwareProcessor, StateAware, StateManager}
+import net.qbert.message.MessagePublishInfo
+import net.qbert.framing.{AMQP, Method, MethodFactory, AMQLongString, AMQShortString}
 import net.qbert.logging.Logging
-import net.qbert.protocol.AMQProtocolDriver
+import net.qbert.protocol.AMQProtocolSession
+import net.qbert.virtualhost.VirtualHostRegistry
+
+object MethodHandler {
+  def apply(session: AMQProtocolSession with StateAware) = new StateAwareMethodHandler(session)
+}
 
 // 
 trait MethodHandler {
-  def handleMethod(channelId: Int, payload: FramePayload): Unit
+  def handleMethod(channelId: Int, method: Method): Unit
   
   
-  def handleConnectionStart(method: Method): Unit
-  def handleConnectionStartOk(method: Method): Unit
-  def handleConnectionTune(method: Method): Unit
-  def handleConnectionTuneOk(method: Method): Unit
-  def handleConnectionOpen(method: Method): Unit
-  def handleConnectionOpenOk(method: Method): Unit
-  def handleChannelOpen(method: Method): Unit
-  def handleChannelOpenOk(method: Method): Unit
+  // handle methods that the server should never see up here
+  def handleConnectionStart(start: AMQP.Connection.Start): Unit = {}
+  def handleConnectionStartOk(startOk: AMQP.Connection.StartOk): Unit
+  def handleConnectionTune(tune: AMQP.Connection.Tune): Unit = {}
+  def handleConnectionTuneOk(tuneOk: AMQP.Connection.TuneOk): Unit
+  def handleConnectionOpen(connOpen: AMQP.Connection.Open): Unit
+  def handleConnectionOpenOk(connOpenOk: AMQP.Connection.OpenOk): Unit = {}
+  def handleChannelOpen(channelOpen: AMQP.Channel.Open): Unit
+  def handleChannelOpenOk(channelOpenOk: AMQP.Channel.OpenOk): Unit = {}
+  def handleBasicPublish(publish: AMQP.Basic.Publish): Unit
 
-}
-
-trait StateAwareProcessor {self: {val stateManager: StateManager} =>
-  class RunInState(f: Unit) {
-    def whenInState(s: State) = if(stateManager inState s) f
-  }
-
-  def execute(f: => Unit): RunInState = new RunInState(f)
 }
 
 /* We opt to use a simple pattern matching system over
@@ -36,62 +36,65 @@ trait StateAwareProcessor {self: {val stateManager: StateManager} =>
  * reasons: its idiomatic, involves less code and allows versioned protocol
  * method handlers to interfere less wit the method hierarchy
  */
-class StateAwareMethodHandler(val protocolDriver: AMQProtocolDriver) extends MethodHandler with StateAwareProcessor with Logging {
-  val stateManager = protocolDriver.stateManager
+class StateAwareMethodHandler(val session: AMQProtocolSession with StateAware) extends MethodHandler with StateAwareProcessor with Logging {
+  val stateManager = session.stateManager
+  val methodFactory = session.methodFactory
+
   //def handleMethod(method: Method) = method.handle(this)
-  def handleMethod(channelId: Int, payload: FramePayload): Unit = payload match {
-    case startok @ AMQP.Connection.StartOk(_,_,_,_) => handleConnectionStartOk(startok)
-    case tuneok @ AMQP.Connection.TuneOk(_,_,_) => handleConnectionTuneOk(tuneok)
-    case open @ AMQP.Connection.Open(_,_,_) => handleConnectionOpen(open)
-    case open @ AMQP.Channel.Open(_) => handleChannelOpen(channelId, open)
-    //case publish @ AMQP.Basic.Publish(_,_,_,__) => handleBasicPublish(publish)
+  def handleMethod(channelId: Int, method: Method): Unit = method match {
+    case startok: AMQP.Connection.StartOk => handleConnectionStartOk(startok)
+    case tuneok: AMQP.Connection.TuneOk => handleConnectionTuneOk(tuneok)
+    case open: AMQP.Connection.Open => handleConnectionOpen(open)
+    case open: AMQP.Channel.Open => handleChannelOpen(channelId, open)
+    case publish: AMQP.Basic.Publish => handleBasicPublish(channelId, publish)
     case _ => println("uh oh")
   }
 
-  def handleConnectionStart(method: Method) = { }
-  def handleConnectionStartOk(method: Method) = execute {doConnectionStartOk(method)} whenInState State.connecting
-  def doConnectionStartOk(method: Method) = {
-    if (stateManager notInState State.connecting) error("error")
 
-    val tuneMessage = AMQP.Connection.Tune(100, 100, 100)
+  def handleConnectionStartOk(startOk: AMQP.Connection.StartOk) = runIfInState(State.connecting){ 
+    info("Connection.Start received: " + startOk)
+
+    val tuneMessage = methodFactory.createConnectionTune(100,100,100)
     val response = tuneMessage.generateFrame(0)
-    protocolDriver writeFrame response
+    session writeFrame response
 
-    stateManager nextNaturalState
-  }
-  def handleConnectionTune(method: Method) = { }
-  def handleConnectionTuneOk(method: Method) = { 
-    if (stateManager notInState State.tuning) error("error1")
-    stateManager nextNaturalState
-  }
-  def handleConnectionOpen(method: Method) = {
-    if(stateManager notInState State.opening) error("error")
-
-    val openok = AMQP.Connection.OpenOk(AMQShortString(""))
-    val response = openok.generateFrame(0)
-    protocolDriver writeFrame response
-
-    stateManager nextNaturalState()
-  }
-  def handleConnectionOpenOk(method: Method) = {}
-  /*
-  def handleChannelOpen(method: Method) = {
-    if(stateManager notInState State.opened) error("channel needs to be open")
-
-    val c = protocolDriver createChannel
-    val openok = AMQP.Channel.OpenOk(AMQLongString(c.channelId.toString))
-    val response = openok generateFrame c.channelId
-    protocolDriver writeFrame response
-  }
-  */
-  // TODO: Needs to go !
-  def handleChannelOpen(method: Method) = {}
-  def handleChannelOpen(channelId: Int, method: Method) = stateManager.executeIfInState(State.opened) {
-    val c = protocolDriver createChannel channelId 
-    val openok = AMQP.Channel.OpenOk(AMQLongString("queue-"+c.channelId.toString))
-    val response = openok.generateFrame(channelId)
-    protocolDriver writeFrame response
     true
   }
-  def handleChannelOpenOk(method: Method) = {}
+
+
+  def handleConnectionTuneOk(tuneOk: AMQP.Connection.TuneOk) = runIfInState(State.tuning){
+    // do nothing ... for now
+    true
+  }
+
+  def handleConnectionOpen(connOpen: AMQP.Connection.Open) = runIfInState(State.opening){
+
+    session.virtualHost = VirtualHostRegistry.get(connOpen.virtualHost.get)
+    val openok = methodFactory.createConnectionOpenOk(AMQShortString(""))
+    val response = openok.generateFrame(0)
+    session writeFrame response
+
+    true
+  }
+
+  // TODO: Needs to go !
+  def handleChannelOpen(channelOpen: AMQP.Channel.Open) = {}
+  def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open) = runIfInState(State.opened) {
+    val c = session createChannel channelId 
+    //val openok = AMQP.Channel.OpenOk(AMQLongString("queue-"+c.channelId.toString))
+    val openok = methodFactory.createChannelOpenOk(AMQLongString("queue-"+c.channelId.toString))
+    val response = openok.generateFrame(channelId)
+    session writeFrame response
+    true
+  }
+
+  // TODO: Needs to go
+  def handleBasicPublish(publish: AMQP.Basic.Publish) = {}
+  def handleBasicPublish(channelId: Int, publish: AMQP.Basic.Publish) = {
+    val publishInfo = MessagePublishInfo(publish.exchangeName.get, publish.routingKey.get, publish.mandatory, publish.immediate)
+    session.getChannel(channelId).map{_.publishReceived(publishInfo)}.getOrElse {
+      info("Channel {} does not exist during basic.publish attempt")
+    }
+  }
+
 }

@@ -1,0 +1,4 @@
+package net.qbert.fr
+
+trait ContentHeader {
+  def 

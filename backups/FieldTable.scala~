@@ -1,0 +1,47 @@
+package net.qbert.framing
+
+import net.qbert.network.{ CanWriteTo, FrameReader, FrameWriter }
+  
+object FieldTable {
+  def apply(props: Map[String, AMQType]) = new UnencodedFieldTable(props)
+  def apply(bytes: Array[Byte]) = new EncodedFieldTable(bytes)
+}
+
+trait FieldTable extends CanWriteTo {
+  val props: Map[String, AMQType]
+
+  def size(): Int
+  def get(key: String): Option[AMQType]= props.get(key)
+  
+}
+
+class UnencodedFieldTable(val props: Map[String, AMQType]) extends FieldTable {
+  lazy val encodedArr = serialize()
+  lazy val encodedSize = encodedArr.length
+
+  def serialize() = {
+    val fw = new FrameWriter
+    fw.writeFieldTable(props)
+    fw.frame.toByteBuffer.array
+  }
+
+  def writeTo(fw: FrameWriter) = {
+    fw.writeBytes(encodedArr)
+  }
+
+  def size() = encodedSize
+}
+
+class EncodedFieldTable(val encodedArr: Array[Byte]) extends FieldTable {
+  lazy val props = deserialize()
+
+  def deserialize() = {
+    val fr = new FrameReader(encodedArr)
+    fr.readFieldTable
+  }
+  def writeTo(fw: FrameWriter) = {
+    fw.writeBytes(encodedArr)
+  }
+
+  def size() = 4 + encodedArr.length
+}

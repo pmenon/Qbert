@@ -1,12 +1,10 @@
 package net.qbert.network
 
-import net.qbert.framing.{ AMQArray, AMQShortString, AMQLongString, AMQFieldTable }
 import java.util.{Date => JDate}
 import org.jboss.netty.buffer.ChannelBuffers
 
 trait CanWriteTo {
   def writeTo(fw: FrameWriter): Unit
-  //def encodedSize(): Int
 }
 
 /* We use a dynamic buffer here in the case where someone creates a writer
@@ -20,39 +18,32 @@ trait CanWriteTo {
 class FrameWriter(size: Int) {
   def this() = this(512)
   // this should be a direct buffer, not dynamic
-  private val buf = ChannelBuffers.buffer(size)
+  private val buf = ChannelBuffers.dynamicBuffer(size)
 
   def bytesWritten() = buf.readableBytes
-  def writeFrom(other: FrameWriter) = buf.writeBytes(other.frame)
+  def writeFrom(other: FrameWriter) = buf.writeByes(other.frame)
 
-  def writeOctet(byte: Int) = buf.writeByte(byte)
-  def writeShort(short: Int) = buf.writeShort(short)
+  def writeOctet(byte: Byte) = buf.writeByte(byte)
+  def writeShort(short: Short) = buf.writeShort(short)
   def writeLong(int: Int) = buf.writeInt(int)
   def writeLongLong(long: Long) = buf.writeLong(long)
   def writeFloat(float: Float) = buf.writeFloat(float)
   def writeTimestamp(d: JDate) = buf.writeLong(d.getTime/1000)
 
-  /*
   def writeShortString(s: String) = {
     buf.writeShort(s.length())
     buf.writeBytes(s.getBytes("utf-8"))
   }
-  */
 
-  def writeShortString(s: AMQShortString) = s.writeTo(this)
-
-  /*
   def writeLongString(s: String) = {
     buf.writeInt(s.length())
     buf.writeBytes(s.getBytes("utf-8"))
   }
-  */
 
-  def writeLongString(s: AMQLongString) = s.writeTo(this)
+  def writeFieldTable(table: FieldTable): Unit = {
+    table.writeTo(this)
+  }
 
-  def writeFieldTable(table: AMQFieldTable): Unit = table.writeTo(this)
-
-  /*
   def writeFieldTable(m: Map[String, Any]):Unit = {
     val tempBuf = new FrameWriter
     var size = 0
@@ -78,17 +69,12 @@ class FrameWriter(size: Int) {
     case table: Map[String,Any] => buf.writeByte('F'); writeFieldTable(table)
     case _ => println("none")
   }
-  */
-
-  def writeArray(array: AMQArray) = array.writeTo(this)
     
-  /*
   def writeArray(array: Array[Any]) = {
     val len = array.length 
     buf.writeInt(len)
     array foreach( value => writeFieldValue(value))
   }
-  */
                     
 
   def writeBytes(b: Array[Byte]) = buf.writeBytes(b)
