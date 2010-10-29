@@ -1,5 +1,0 @@
-package net.qbert.connection
-
-import org.jboss.netty.channel.Channel
-
-case class AMQConnection(c: Channel)

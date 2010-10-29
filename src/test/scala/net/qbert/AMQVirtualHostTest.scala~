@@ -1,4 +1,0 @@
-package net.qbert.virtualhost
-
-import org.spe
-class AMQVirtualHostTest extends Specification {

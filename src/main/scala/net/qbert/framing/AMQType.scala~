@@ -1,3 +1,0 @@
-package net.qbert.fr
-
-trait AMQType extends CanWriteTo 

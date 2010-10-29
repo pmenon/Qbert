@@ -1,3 +1,0 @@
-package net.qbert.queue
-
-class AMQQueue 
