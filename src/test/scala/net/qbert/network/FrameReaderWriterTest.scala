@@ -2,6 +2,7 @@ package net.qbert.network
 
 import net.qbert.framing.{AMQP, AMQType, AMQFrameDecoderImpl, Frame, Method, AMQFieldTable, AMQShortString, ShortStringType}
 import net.qbert.framing.amqp_091.AMQP_091
+import net.qbert.protocol.ProtocolVersion
 
 import org.specs._
 
@@ -17,7 +18,7 @@ class FrameReaderWriterTest extends Specification {
       frame writeTo fw
 
       val fr = new FrameReader(fw.frame)
-      val decoder = new AMQFrameDecoderImpl
+      val decoder = new AMQFrameDecoderImpl(ProtocolVersion(0,9))
 
       val frame2 = decoder.decode(fr)
 

@@ -2,12 +2,16 @@ package net.qbert.connection
 
 import net.qbert.protocol.ProtocolVersion
 import net.qbert.framing.AMQDataBlock
+import net.qbert.network.netty.NettyChannel
 
-import org.jboss.netty.channel.Channel
-
-class AMQConnection(c: Channel) {
+class AMQConnection(val channel: NettyChannel) {
   private var version: ProtocolVersion = null
 
-  def writeFrame(dataBlock: AMQDataBlock) = c.write(dataBlock)
+  def initialize(pv: ProtocolVersion) = {
+    version = pv
+    channel.setVersion(pv)
+  }
+
+  def writeFrame(dataBlock: AMQDataBlock) = channel.write(dataBlock)
 
 }

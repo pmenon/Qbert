@@ -23,14 +23,11 @@ object Frame {
     new Frame(typeId, channelId, payload.size, payload)
   }
 
-  def createMethodFrame(channelId: Int, payload: FramePayload): Frame = {
-    val f = new Frame(channelId, payload)
-    f
-  }
+  def createMethodFrame(channelId: Int, payload: FramePayload): Frame = apply(payload.typeId, channelId, payload)
+
 }
 
 class Frame(val typeId: Int, val channelId: Int, val length: Int, val payload: FramePayload) extends AMQDataBlock {
-  def this(channelId: Int, payload: FramePayload) = this(payload.typeId, channelId, payload.size, payload)
 
   def size() = {
     1 + 2 + 4 + payload.size() + 1

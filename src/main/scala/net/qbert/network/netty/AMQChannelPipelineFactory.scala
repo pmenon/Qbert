@@ -9,9 +9,9 @@ class AMQChannelPipelineFactory extends ChannelPipelineFactory {
     val p = Channels.pipeline
    
     // add encoder
-    p addLast("encoder", new AMQEncoder)
+    p addLast(NettyCodec.frameEncoder, NettyCodec.encoder)
 
-    p addLast("decoder", new AMQDecoder)
+    p addLast(NettyCodec.initialDecoder, NettyCodec.decoder)
     p addLast("handler", new SimpleDelegatingHandler)
 
     p

@@ -8,22 +8,6 @@ import net.qbert.logging.Logging
 import net.qbert.state.{ State, StateDriven, StateManager }
 import net.qbert.virtualhost.AMQVirtualHost
 
-trait AMQProtocolSession extends ChannelManager {
-  val conn: AMQConnection
-  var protocolVersion: ProtocolVersion = null
-  var virtualHost: Option[AMQVirtualHost] = None
-  var methodFactory: MethodFactory = null
-
-  def virtualHost_=(host: AMQVirtualHost) = Some(host)
-
-  def writeFrame(frame: Frame) = conn writeFrame frame
-
-  def init(pv: ProtocolVersion) = {
-    protocolVersion = pv
-    methodFactory = MethodFactory.createWithVersion(protocolVersion)
-  }
-}
-
 class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with StateDriven with Logging {
   val initialState = State.waitingConnection
   var methodHandler: MethodHandler = null
@@ -53,7 +37,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
       val method = methodFactory.createConnectionStart(protocolVersion, AMQFieldTable(), AMQLongString("AMQPPLAIN"), AMQLongString("en_US"))
       method.generateFrame(0)
     } else {
-      ProtocolInitiation(ProtocolInitiation.AMQP_HEADER, 1, 1, 0, 9)
+      ProtocolInitiation(ProtocolInitiation.AMQP_HEADER, 1, 0, 9, 1)
     }
     
     conn writeFrame response

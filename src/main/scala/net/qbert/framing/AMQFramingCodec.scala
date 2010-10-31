@@ -3,8 +3,19 @@ package net.qbert.framing
 import net.qbert.logging.Logging
 import net.qbert.framing.{Frame, MethodFactory_091}
 import net.qbert.network.{FrameReader, FrameWriter}
+import net.qbert.protocol.ProtocolVersion
 
-class AMQFrameEncoder {
+object AMQFrameCodec {
+  def protocolInitiationDecoder() = new AMQProtocolInitiationDecoderImpl
+  def frameDecoder(version: ProtocolVersion) = new AMQFrameDecoderImpl(version)
+  def frameEncoder() = new AMQFrameEncoderImpl
+}
+
+trait AMQFrameEncoder {
+  def encode(frame: Frame): AnyRef
+}
+
+class AMQFrameEncoderImpl extends AMQFrameEncoder {
   def encode(frame: Frame) = {
     val writer = new FrameWriter(frame.size)    
     frame.writeTo(writer)
@@ -16,7 +27,7 @@ trait AMQFrameDecoder {
   def decode(fr: FrameReader): Option[AMQDataBlock]
 }
 
-class AMQFrameDecoderImpl extends AMQFrameDecoder with Logging {
+class AMQFrameDecoderImpl(version: ProtocolVersion) extends AMQFrameDecoder with Logging {
   val methodFactory = new MethodFactory_091
   def decode(fr: FrameReader): Option[Frame] = {
     val availablePayload = (fr readableBytes) - (1 + 2 + 4 + 1)
@@ -43,7 +54,7 @@ class AMQFrameDecoderImpl extends AMQFrameDecoder with Logging {
   }
 }
 
-class AMQProtocolInitializationDecoderImpl extends AMQFrameDecoder {
+class AMQProtocolInitiationDecoderImpl extends AMQFrameDecoder {
   def decode(fr: FrameReader): Option[ProtocolInitiation] = {
     if(fr.readableBytes < 4 + 1 + 1 + 1 + 1) return None
 

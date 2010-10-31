@@ -13,9 +13,8 @@ object MethodFactory {
   }
 }
 
-trait MethodFactory extends CanReadFrom[Option[Method]] {
+trait MethodFactory {
   def createMethodFrom(fr: FrameReader): Option[Method]
-  def readFrom(fr: FrameReader) = createMethodFrom(fr)
 
   def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString): AMQP.Connection.Start
   def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short): AMQP.Connection.Tune

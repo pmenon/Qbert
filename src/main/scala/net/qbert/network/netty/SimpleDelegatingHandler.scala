@@ -12,7 +12,7 @@ class SimpleDelegatingHandler extends SimpleChannelHandler with Logging {
 
   final override def channelConnected(c: ChannelHandlerContext, e: ChannelStateEvent) = {
     debug("Channel connected ...")
-    stateHandler = new AMQProtocolDriver(new AMQConnection(e getChannel))
+    stateHandler = new AMQProtocolDriver(new AMQConnection(new NettyChannel(e.getChannel)))
   }
 
   final override def messageReceived(c: ChannelHandlerContext, m: MessageEvent) = {

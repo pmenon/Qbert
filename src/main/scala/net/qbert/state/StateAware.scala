@@ -12,7 +12,7 @@ trait StateAwareProcessor extends StateAware {
 
 trait StateDriven extends StateAware {
   val initialState: State
-  val stateManager = new StateManager(initialState)  
+  lazy val stateManager = new StateManager(initialState)  
 }
 
 trait StateMachine[T] {
