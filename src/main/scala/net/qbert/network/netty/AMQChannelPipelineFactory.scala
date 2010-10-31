@@ -12,7 +12,7 @@ class AMQChannelPipelineFactory extends ChannelPipelineFactory {
     p addLast(NettyCodec.frameEncoder, NettyCodec.encoder)
 
     p addLast(NettyCodec.initialDecoder, NettyCodec.decoder)
-    p addLast("handler", new SimpleDelegatingHandler)
+    p addLast("handler", new NettyDelegatingHandler)
 
     p
   }

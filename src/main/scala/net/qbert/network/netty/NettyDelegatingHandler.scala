@@ -7,7 +7,7 @@ import net.qbert.protocol.AMQProtocolDriver
 
 import org.jboss.netty.channel.{ChannelStateEvent, ChannelHandlerContext, SimpleChannelHandler, MessageEvent, ExceptionEvent}
 
-class SimpleDelegatingHandler extends SimpleChannelHandler with Logging {
+class NettyDelegatingHandler extends SimpleChannelHandler with Logging {
   var stateHandler: AMQProtocolDriver = null
 
   final override def channelConnected(c: ChannelHandlerContext, e: ChannelStateEvent) = {
