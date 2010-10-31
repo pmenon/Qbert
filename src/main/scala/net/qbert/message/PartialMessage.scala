@@ -6,11 +6,8 @@ import scala.collection.mutable
 
 class ContentChunk(val chunk: Array[Byte])
 
-class PartialMessage(val info: MessagePublishInfo) {
-  private var header: ContentHeader = null
+case class PartialMessage(info: Option[MessagePublishInfo], header: Option[ContentHeader] ) {
   private val chunks = new mutable.ArrayBuffer[ContentChunk]()
-
-  def setHeader(c: ContentHeader) = header = c
 
   def addContent(chunk: ContentChunk) = chunks += chunk
 }

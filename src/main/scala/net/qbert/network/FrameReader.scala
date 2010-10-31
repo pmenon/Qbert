@@ -40,7 +40,7 @@ class FrameReader(buf: ChannelBuffer) {
   def readLong(): Int = buf.readInt
   def readLongLong(): Long = buf.readLong
   def readFloat(): Float = buf.readFloat
-  def readTimestamp(): JDate = new JDate(buf.readLong)
+  def readTimestamp(): JDate = new JDate(buf.readLong*1000)
 
   def readArray(): AMQArray = {
     AMQArray(this)

@@ -36,7 +36,6 @@ trait AMQFieldTable extends CanWriteTo with HasSize {
     //val tempWriter = new FrameWriter
     //props foreach{ case (name, value) => name.writeTo(tempWriter); value.writeTo(tempWriter) }
     //val size = tempWriter.bytesWritten
-    println("fieldTable= " + props + " size = "+tableSize)
     fw.writeLong(tableSize)
     props foreach{ case (name, value) => name.writeTo(fw); value.writeTo(fw) }
     //map foreach{ case (name, value) => name.writeTo(fw); value.writeTo(fw) }

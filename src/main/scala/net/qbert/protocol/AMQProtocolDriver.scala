@@ -41,7 +41,6 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
     methodHandler = MethodHandler(this)
   }
     
-
   def versionOk(major: Int, minor: Int) = true
 
   def protocolInitiation(pi: ProtocolInitiation) = {

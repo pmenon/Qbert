@@ -1,6 +1,6 @@
 package net.qbert.network
 
-import net.qbert.framing.{ AMQArray, AMQShortString, AMQLongString, AMQFieldTable }
+import net.qbert.framing.{ AMQArray, AMQShortString, AMQLongString, AMQFieldTable, BasicProperties }
 import java.util.{Date => JDate}
 import org.jboss.netty.buffer.ChannelBuffers
 
@@ -89,6 +89,8 @@ class FrameWriter(size: Int) {
     array foreach( value => writeFieldValue(value))
   }
   */
+  
+  def writeBasicProperties(props: BasicProperties) = props.writeTo(this)
                     
 
   def writeBytes(b: Array[Byte]) = buf.writeBytes(b)

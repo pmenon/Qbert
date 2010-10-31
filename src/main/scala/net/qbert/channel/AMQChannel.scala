@@ -6,6 +6,8 @@ import net.qbert.framing.{ ContentBody, ContentHeader, Frame, Method }
 import net.qbert.logging.Logging
 import net.qbert.message.{ MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
+import net.qbert.queue.QueueConsumer
+import net.qbert.subscription.Subscription
 import net.qbert.state.{ State, StateDriven }
 
 import scala.actors.Actor
@@ -15,12 +17,14 @@ object AMQChannel {
   val systemChannelId = 0
 }
 
-sealed abstract case class ChannelMessage()
+sealed abstract class ChannelMessage()
 case class PublishReceived(info: MessagePublishInfo) extends ChannelMessage()
+case class ContentHeaderReceived(header: ContentHeader) extends ChannelMessage()
+case class ContentBodyReceived(body: ContentBody) extends ChannelMessage()
 case class FrameReceived(f: Frame) extends ChannelMessage
 case class Close() extends ChannelMessage
 
-class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with Logging {
+class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with QueueConsumer with Logging {
   info("Channel created with id {} ", channelId)
   
   val initialState = State.opened
@@ -30,6 +34,8 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   start
 
   def publishReceived(info: MessagePublishInfo) = this ! PublishReceived(info)
+  def publishContentHeader(header: ContentHeader) = this ! ContentHeaderReceived(header)
+  def publishContentBody(body: ContentBody) = this ! ContentBodyReceived(body)
   def frameReceived(f: Frame) = this ! FrameReceived(f)
   def close() = this ! Close()
 
@@ -37,26 +43,36 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
 
   def mainLoop() = react {
     case PublishReceived(info) => handlePublishFrame(info)
+    case ContentHeaderReceived(header) => handleContentHeader(header)
+    case ContentBodyReceived(body) => handleContentBody(body)
     case Close() => closeChannel()
   }
 
-  def handlePublishFrame(info: MessagePublishInfo) = {
-    //info("Channel {} received basic.publish", channelId)
+  def handlePublishFrame(publishInfo: MessagePublishInfo) = {
+    info("Channel {} received basic.publish {}", channelId, publishInfo)
     partialMessage match {
-      case Some(existing) => println("waiting for")
+      case None => partialMessage = Some(PartialMessage(Some(publishInfo), None))
+      case _ => error("Received basic.publish while waiting for content")
     }
-    //partialMessage match {
-    //  case Some(m) => info("")
-    //}
   }
 
-  def handleContentHeader(header: ContentHeader) = {} 
-  def handleContentHeader(contenBody: ContentBody) = {}
+  def handleContentHeader(header: ContentHeader) = {
+    info("Channel {} received content header {}", channelId, header)
+    partialMessage match {
+      case Some(PartialMessage(Some(p), None)) => 
+        partialMessage = Some(PartialMessage(Some(p), Some(header)))
+      case _ => error("Received header without publish frame")
+    }
+  }
+
+  def handleContentBody(contenBody: ContentBody) = {}
 
   def closeChannel() = {
     //do much much more here
     println("closing channel")
     exit()
   }
+
+
 
 }
