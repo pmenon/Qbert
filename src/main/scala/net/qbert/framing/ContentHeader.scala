@@ -15,6 +15,8 @@ object BasicProperties extends CanReadFrom[BasicProperties] {
 
   implicit def booleanToRicherBoolean(b: Boolean) = new RicherBoolean(b)
 
+  implicit def byteToSizable(b: Byte) = new { def size() = 1 }
+
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
     val props = fr.readShort
@@ -44,13 +46,19 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
                            timestamp: Option[JDate], typ: Option[AMQShortString], 
                            userId: Option[AMQShortString], appId: Option[AMQShortString], 
                            clusterId: Option[AMQShortString]) extends CanWriteTo {
+  import BasicProperties._
+
+  val params = List(contentType, contentEncoding, headers, deliveryMode,
+                    correlationId, replyTo, expiration, messageId,
+                    timestamp, typ, userId, appId, clusterId)
   def size() = {
     var s = 0
 
     contentType foreach { s += _.size }
     contentEncoding foreach { s += _.size }
     headers foreach { s += _.size }
-    if(deliveryMode isDefined) s += 2
+    deliveryMode foreach { s += _.size }
+    //if(deliveryMode isDefined) s += 2
     if(priority isDefined) s += 2
     correlationId foreach { s += _.size }
     replyTo foreach { s += _.size }
