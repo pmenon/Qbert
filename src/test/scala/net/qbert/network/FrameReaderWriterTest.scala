@@ -1,6 +1,6 @@
 package net.qbert.network
 
-import net.qbert.framing.{AMQP, AMQType, AMQFrameDecoderImpl, Frame, Method, AMQFieldTable, AMQShortString, ShortStringType}
+import net.qbert.framing.{AMQP, AMQType, AMQFrameDecoderImpl, Frame, Method, AMQFieldTable, AMQShortString, ShortStringFieldValue}
 import net.qbert.framing.amqp_091.AMQP_091
 import net.qbert.protocol.ProtocolVersion
 
@@ -10,7 +10,7 @@ class FrameReaderWriterTest extends Specification {
   "FrameReader should" should {
     "properly parse method frames" in {
       
-      val props = Map(AMQShortString("test") -> ShortStringType("Qbert"))
+      val props = Map(AMQShortString("test") -> ShortStringFieldValue("Qbert"))
       val m = AMQP_091.Connection.Start(0,9,AMQFieldTable(props), "simple", "en_US")
 
       val frame = m.generateFrame(0)

@@ -13,7 +13,7 @@ object AMQShortString extends CanReadFrom[AMQShortString] {
   implicit def stringToShortSting(s: String):AMQShortString = new AMQShortString(s)
 }
 
-class AMQShortString(val s: String) extends CanWriteTo with HasSize {
+class AMQShortString(val s: String) extends AMQType {
   val bytes = s.getBytes("utf-8")
   def size() = 1 + bytes.length
   def writeTo(fw: FrameWriter) = {
@@ -35,7 +35,7 @@ object AMQLongString extends CanReadFrom[AMQLongString] {
   implicit def stringToLongString(s: String): AMQLongString = new AMQLongString(s.getBytes("utf-8"))
 }
 
-class AMQLongString(val longString: Array[Byte]) extends CanWriteTo with HasSize {
+class AMQLongString(val longString: Array[Byte]) extends AMQType {
   def size() = 4 + longString.length
   def writeTo(fw: FrameWriter) = {
     fw.writeLong(longString.length)

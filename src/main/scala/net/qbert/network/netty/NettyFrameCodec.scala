@@ -35,6 +35,19 @@ trait NettyDecoder {
   }
 }
 
+/**
+ * The initial protocol initiation decoder.  This decoder delegates to an
+ * actual protocol initiation decoder implementation to decode AMQP protocol 
+ * frames.  Once the negotiation process is complete, it removes itself from
+ * the pipeline and inserts an AMQP frame decoder as per the spec.  Before
+ * doing so, it acquires the agreed upon protocol version from the session
+ * and uses this to instantiate the new decoder in the pipeline.  This is
+ * required since the broker is multi-versioned.
+ *
+ * Note: When the protocol is first agreed upon, the first frame will be handled
+ * by a call placed here.  All further frame-decodes will be performed by the
+ * NettyFrameDecoder in place in the pipeline
+ */
 class NettyInitialAMQDecoder extends FrameDecoder with NettyDecoder {
   val decoder = AMQFrameCodec.protocolInitiationDecoder
 

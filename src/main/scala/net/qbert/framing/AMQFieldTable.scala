@@ -4,34 +4,34 @@ import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
 
 import scala.collection.mutable
 
-class FieldTableDeserializer extends TypeDeserializer {
+class FieldTableDeserializer extends FieldValueDeserializer {
   def readFieldTable(fr: FrameReader): AMQFieldTable = {
-    val res = mutable.Map[AMQShortString, AMQType]()
+    val res = mutable.Map[AMQShortString, AMQFieldValue]()
     val s = fr.readLong
     val tableFR = new FrameReader(fr.readBytes(s))
 
-    while(tableFR.readableBytes > 0) res.put(tableFR.readShortString, readType(tableFR))
+    while(tableFR.readableBytes > 0) res.put(tableFR.readShortString, readFieldValue(tableFR))
 
-    AMQFieldTable(Map[AMQShortString, AMQType]() ++ res)
+    AMQFieldTable(Map[AMQShortString, AMQFieldValue]() ++ res)
   }
 }
 
 object AMQFieldTable extends CanReadFrom[AMQFieldTable] {
   val deserializer = new FieldTableDeserializer
 
-  def apply():AMQFieldTable = apply(Map[AMQShortString, AMQType]())
-  def apply(props: Map[AMQShortString, AMQType]) = new UnencodedFieldTable(props)
+  def apply():AMQFieldTable = apply(Map[AMQShortString, AMQFieldValue]())
+  def apply(props: Map[AMQShortString, AMQFieldValue]) = new UnencodedFieldTable(props)
   def apply(bytes: Array[Byte]) = new EncodedFieldTable(bytes)
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = deserializer readFieldTable fr
 }
 
-trait AMQFieldTable extends CanWriteTo with HasSize {
-  val props: Map[AMQShortString, AMQType]
+trait AMQFieldTable extends AMQType {
+  val props: Map[AMQShortString, AMQFieldValue]
   lazy val tableSize = props.foldLeft(0){ (acc,tuple) => acc + tuple._1.size + tuple._2.size }
 
   def size() = 4 + tableSize
-  def get(key: AMQShortString): Option[AMQType]= props.get(key)  
+  def get(key: AMQShortString): Option[AMQFieldValue]= props.get(key)  
   def writeTo(fw: FrameWriter) = {
     //val tempWriter = new FrameWriter
     //props foreach{ case (name, value) => name.writeTo(tempWriter); value.writeTo(tempWriter) }
@@ -43,7 +43,7 @@ trait AMQFieldTable extends CanWriteTo with HasSize {
   }
 }
 
-class UnencodedFieldTable(val props: Map[AMQShortString, AMQType]) extends AMQFieldTable
+class UnencodedFieldTable(val props: Map[AMQShortString, AMQFieldValue]) extends AMQFieldTable
 
 class EncodedFieldTable(val encodedArr: Array[Byte]) extends AMQFieldTable {
   lazy val props = deserialize()

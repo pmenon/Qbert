@@ -28,7 +28,10 @@ trait AMQFrameDecoder {
 }
 
 class AMQFrameDecoderImpl(version: ProtocolVersion) extends AMQFrameDecoder with Logging {
-  val methodFactory = new MethodFactory_091
+  val methodFactory = MethodFactory.createWithVersion(version)
+  val contentHeaderFactory = ContentHeaderFactory.createWithVersion(version)
+  val contentBodyFactory = ContentBody.readFrom(_:FrameReader)
+
   def decode(fr: FrameReader): Option[Frame] = {
     val availablePayload = (fr readableBytes) - (1 + 2 + 4 + 1)
     if(availablePayload < 0) return None
@@ -39,11 +42,12 @@ class AMQFrameDecoderImpl(version: ProtocolVersion) extends AMQFrameDecoder with
 
     if(availablePayload < size) return None
 
-    val m = methodFactory createMethodFrom fr
-    val frame = m match {
-      case Some(method) => Some(Frame(typeId, channel, method))
-      case None => None
-    }
+    val payload = if(typeId == Frame.FRAME_METHOD) methodFactory.createMethodFrom(fr)
+                  else if (typeId == Frame.FRAME_CONTENT) contentHeaderFactory.createContentHeaderFrom(fr)
+                  else if (typeId == Frame.FRAME_BODY) contentBodyFactory(fr)
+                  else None
+
+    val frame = payload.map(x => Frame(typeId, channel, x)).orElse(None)
 
     val frameDelimiter = fr readOctet
     //if(frameDelimiter == Frame.FRAME_DELIMETER) {

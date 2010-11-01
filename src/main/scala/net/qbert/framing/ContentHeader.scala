@@ -6,16 +6,12 @@ import java.util.{ Date => JDate }
 
 
 object BasicProperties extends CanReadFrom[BasicProperties] {
-  //type Spitter = Function1[FrameReader, Option[T]]
-  //type Spitter = PartialFunction[FrameReader, Any]
   
   class RicherBoolean(b: Boolean) {
     def option[T](f: => T):Option[T] = if(b) Some(f) else None
   }
 
   implicit def booleanToRicherBoolean(b: Boolean) = new RicherBoolean(b)
-
-  implicit def byteToSizable(b: Byte) = new { def size() = 1 }
 
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
@@ -46,61 +42,30 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
                            timestamp: Option[JDate], typ: Option[AMQShortString], 
                            userId: Option[AMQShortString], appId: Option[AMQShortString], 
                            clusterId: Option[AMQShortString]) extends CanWriteTo {
-  import BasicProperties._
+  import AMQType._
 
-  val params = List(contentType, contentEncoding, headers, deliveryMode,
+  lazy val params = List[Option[AMQType]](contentType, contentEncoding, headers, deliveryMode, priority,
                     correlationId, replyTo, expiration, messageId,
                     timestamp, typ, userId, appId, clusterId)
+
+  // TODO: we could do some performance enhancements by iterating through the params once
+  // to generate both the bitfield props and calcualte the size
+
   def size() = {
-    var s = 0
-
-    contentType foreach { s += _.size }
-    contentEncoding foreach { s += _.size }
-    headers foreach { s += _.size }
-    deliveryMode foreach { s += _.size }
-    //if(deliveryMode isDefined) s += 2
-    if(priority isDefined) s += 2
-    correlationId foreach { s += _.size }
-    replyTo foreach { s += _.size }
-    expiration foreach { s += _.size }
-    messageId foreach { s += _.size }
-    if(timestamp isDefined) s += 8 
-    typ foreach { s += _.size }
-    userId foreach { s += _.size }
-    appId foreach { s += _.size }
-    clusterId foreach { s += _.size }
-    
-    s + 2
-  }
-
-  def fold[T](o: Option[T], f: T => Unit, otherwise: () => Unit):Unit = o match {
-    case Some(x: T) => f(x)
-    case None => otherwise()
+    2 + params.foldLeft(0)( (acc, o) => acc + (if(o.isDefined) o.get.size else 0) )
   }
 
   def writeTo(fw: FrameWriter) = {
     var props = 0
     val tempFw = new FrameWriter(size() - 2)
-    fold[AMQShortString](contentType, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](contentEncoding, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQFieldTable](headers, {x => props = (props << 1) | 1; tempFw.writeFieldTable(x)}, () => props <<= 1)
-    fold[Byte](deliveryMode, {x => props = (props << 1) | 1; tempFw.writeOctet(x)}, () => props <<= 1)
-    fold[Byte](priority, {x => props = (props << 1) | 1; tempFw.writeOctet(x)}, () => props <<= 1)
-    fold[AMQShortString](correlationId, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](replyTo, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](expiration, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](messageId, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[JDate](timestamp, {x => props = (props << 1) | 1; tempFw.writeTimestamp(x)}, () => props <<= 1)
-    fold[AMQShortString](typ, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](userId, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](appId, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
-    fold[AMQShortString](clusterId, {x => props = (props << 1) | 1; tempFw.writeShortString(x)}, () => props <<= 1)
+
+    props = params.foldLeft(0)( (acc, o) => (acc << 1) | (if(o.isDefined) 1 else 0) )
+    params.foreach(x => x.map(_.writeTo(tempFw)))
 
     fw.writeShort(props)
     fw.writeFrom(tempFw)
   }
 }
-
 
 object ContentHeader extends CanReadFrom[ContentHeader] {
   def apply(fr: FrameReader) = readFrom(fr)

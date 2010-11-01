@@ -14,7 +14,7 @@ class QbertNetworkTest extends Specification {
       cf.setVirtualHost("/")
 
       val c = cf.newConnection()
-      c.createChannel()
+      val ch = c.createChannel()
       c.createChannel()
       c.createChannel()
       c.createChannel()

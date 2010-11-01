@@ -5,7 +5,7 @@ import net.qbert.protocol.ProtocolVersion
 import net.qbert.network.{ CanReadFrom, FrameReader }
 
 object MethodFactory {
-  private val map:Map[(Int, Int), MethodFactory] = Map((0,9) -> new MethodFactory_091,
+  private val map = Map((0,9) -> new MethodFactory_091,
                         (0,8) -> new MethodFactory_081)
   def createWithVersion(pv: ProtocolVersion): MethodFactory = map.get((pv.major, pv.minor)).getOrElse {
     error("There is no factory for protocol version: " + pv)
@@ -13,8 +13,9 @@ object MethodFactory {
   }
 }
 
-trait MethodFactory {
+trait MethodFactory extends CanReadFrom[Option[Method]] {
   def createMethodFrom(fr: FrameReader): Option[Method]
+  def readFrom(fr: FrameReader) = createMethodFrom(fr)
 
   def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString): AMQP.Connection.Start
   def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short): AMQP.Connection.Tune

@@ -1,12 +1,10 @@
 package net.qbert.protocol
 
-import net.qbert.channel.{ ChannelManager }
 import net.qbert.connection.AMQConnection
-import net.qbert.framing.{ AMQDataBlock, Frame, AMQFieldTable, AMQLongString, AMQShortString, AMQP, FramePayload, ProtocolInitiation, Method, MethodFactory }
+import net.qbert.framing.{ AMQDataBlock, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method, MethodFactory }
 import net.qbert.handler.MethodHandler
 import net.qbert.logging.Logging
 import net.qbert.state.{ State, StateDriven, StateManager }
-import net.qbert.virtualhost.AMQVirtualHost
 
 class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with StateDriven with Logging {
   val initialState = State.waitingConnection
