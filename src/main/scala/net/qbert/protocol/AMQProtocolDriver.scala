@@ -6,10 +6,7 @@ import net.qbert.handler.MethodHandler
 import net.qbert.logging.Logging
 import net.qbert.state.{ State, StateDriven, StateManager }
 
-class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with StateDriven with Logging {
-  val initialState = State.waitingConnection
-  var methodHandler: MethodHandler = null
-
+trait AMQProtocolDriver extends AMQProtocolSession with Logging {
   def dataBlockReceived(datablock: AMQDataBlock) = {
     datablock match {
       case pi: ProtocolInitiation => protocolInitiation(pi)
@@ -18,6 +15,15 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
     }
   }
 
+  def protocolInitiationReceived(pi: ProtocolInitiation): Unit
+  def frameReceived(f: Frame): Unit
+}
+
+
+class StateDrivenAMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolDriver with StateMachine with Logging {
+  val initialState = State.waitingConnection
+  var methodHandler: MethodHandler = null
+
   override def init(version: ProtocolVersion) = {
     super.init(version)
     methodHandler = MethodHandler(this)
@@ -25,6 +31,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
     
   def versionOk(major: Int, minor: Int) = true
 
+  /*
   def protocolInitiation(pi: ProtocolInitiation) = {
     if(stateManager notInState State.waitingConnection) error("incorrect order")
 
@@ -47,6 +54,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
     info("Method received : " + frame.payload)
     methodHandler.handleMethod(frame.channelId, frame.payload.asInstanceOf[Method])
   }
+  */
 
 
 }
