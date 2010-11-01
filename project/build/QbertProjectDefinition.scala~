@@ -1,9 +1,0 @@
-import sbt._
-
-class QbertProjectDefinition(info: ProjectInfo) extends DefaultProject(info) {
-  val jbossRepository = "JBoss Public Maven 2 Repository" at "http://repository.jboss.org/nexus/content/groups/public/"
-
-  val netty = "org.jboss.netty" % "netty" % "3.2.2.Final"
-
-  val specs = "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5"
-}
