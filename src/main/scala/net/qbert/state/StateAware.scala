@@ -15,19 +15,23 @@ trait StateDriven extends StateAware {
   lazy val stateManager = new StateManager(initialState)  
 }
 
-trait StateMachine[T] {
+trait StateMachine[S, I] {
   var currentState: State = _
 
   type StateTransitionFunction = PartialFunction[Event, State]
 
-  case class State(name: String)
+  case class State(name: S)
 
-  case class Event(input: T)
+  case class Event(input: I)
 
-  def when(state: State)(f: StateTransitionFunction) = registerTransition(state.name, f)
+  def when(stateName: S)(f: StateTransitionFunction) = registerTransition(stateName, f)
 
-  private var transitionMap = new mutable.HashMap[String, StateTransitionFunction]
-  def registerTransition(stateName: String, sf: StateTransitionFunction) = {
+  def goTo(stateName: S): State = State(stateName)
+
+  def stay() = currentState
+
+  private var transitionMap = new mutable.HashMap[S, StateTransitionFunction]
+  def registerTransition(stateName: S, sf: StateTransitionFunction) = {
     transitionMap.put(stateName, sf)
   }
 
