@@ -2,6 +2,7 @@ package net.qbert.state
 
 import scala.collection.mutable
 
+// borrowed from Akka's FSM
 trait StateMachine[S, I] {
   var currentState: S = _
 

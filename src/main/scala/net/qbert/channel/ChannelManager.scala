@@ -11,6 +11,9 @@ class ChannelRegistry extends Registry[Long, AMQChannel]
 trait ChannelManager {self: AMQProtocolSession =>
   //val channelMap = new mutable.HashMap[Long, AMQChannel]()
   private val channelMap = new ChannelRegistry
+  private var maxChannels = None
+
+  def maxChannels_=(channels: Int) = Some(channels)
 
   def channel(channelId: Int) = getChannel(channelId)
 
