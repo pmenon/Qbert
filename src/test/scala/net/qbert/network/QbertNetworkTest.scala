@@ -16,8 +16,8 @@ class QbertNetworkTest extends Specification {
       val c = cf.newConnection()
       val ch = c.createChannel()
       c.createChannel()
-      c.createChannel()
-      c.createChannel()
+      //c.createChannel()
+      //c.createChannel()
       
       
     }

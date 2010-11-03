@@ -1,7 +1,7 @@
 package net.qbert.framing
 
 import net.qbert.framing.Frame
-import net.qbert.handler.MethodHandler
+import net.qbert.handler.{ MethodError, MethodHandler }
 import net.qbert.network.{FrameWriter, FrameReader}
 
 trait Method extends FramePayload {
@@ -12,7 +12,7 @@ trait Method extends FramePayload {
 
   def argSize(): Int
   def writeArguments(fw: FrameWriter): Unit
-  def handle(methodHandler: MethodHandler): Unit
+  def handle(channelId: Int, methodHandler: MethodHandler): Either[MethodError, Option[Frame]]
 
   def writeTo(fw: FrameWriter) = {
     fw.writeShort(classId)

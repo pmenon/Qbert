@@ -8,7 +8,6 @@ import net.qbert.message.{ MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.queue.QueueConsumer
 import net.qbert.subscription.Subscription
-import net.qbert.state.{ State, StateDriven }
 
 import scala.actors.Actor
 import scala.actors.Actor._
@@ -27,7 +26,6 @@ case class Close() extends ChannelMessage
 class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with QueueConsumer with Logging {
   info("Channel created with id {} ", channelId)
   
-  val initialState = State.opened
   private var partialMessage: Option[PartialMessage] = None
   
   // start as soon as we instantiate

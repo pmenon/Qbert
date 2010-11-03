@@ -4,6 +4,15 @@ import net.qbert.protocol.ProtocolVersion
 import net.qbert.framing.AMQDataBlock
 import net.qbert.network.netty.NettyChannel
 
+
+sealed case class ConnectionState 
+case object AwaitingConnectionStartOk extends ConnectionState
+case object AwaitingConnectionTuneOk extends ConnectionState
+case object AwaitingConnectionOpen extends ConnectionState
+case object Opened extends ConnectionState
+case object Closing extends ConnectionState
+case object Stopped extends ConnectionState
+
 class AMQConnection(val channel: NettyChannel) {
   private var version: ProtocolVersion = null
 

@@ -25,7 +25,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 10
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionStart(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionStart(channelId, this)
 
       def argSize = 1 + 1 + serverProperties.size + mechanisms.size + locales.size
 
@@ -55,7 +55,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 11
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionStartOk(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionStartOk(channelId, this)
 
       def argSize = clientProperties.size + mechanisms.size + response.size + locales.size
 
@@ -80,7 +80,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 30
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionTune(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionTune(channelId, this)
 
       def argSize = 2 + 4 + 2
 
@@ -110,7 +110,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 31
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionTuneOk(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionTuneOk(channelId, this)
 
       def argSize = 2 + 4 + 2
 
@@ -135,7 +135,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 40
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionOpen(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionOpen(channelId, this)
 
       def argSize = virtualHost.size + capabilities.size + 1
 
@@ -160,7 +160,7 @@ object AMQP_091 {
       val classId = 10
       val methodId = 41
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleConnectionOpenOk(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionOpenOk(channelId, this)
 
       def argSize = knownHosts.size
 
@@ -192,7 +192,7 @@ object AMQP_091 {
       val classId = 20
       val methodId = 10
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleChannelOpen(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleChannelOpen(channelId, this)
 
       def argSize = outOfBand.size
 
@@ -219,7 +219,7 @@ object AMQP_091 {
       val classId = 20
       val methodId = 11
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleChannelOpenOk(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleChannelOpenOk(channelId, this)
 
       def argSize = channelId.size
 
@@ -248,7 +248,7 @@ object AMQP_091 {
       def mandatory = (bitField & 0x1) != 0
       def immediate = (bitField & 0x2) != 0
 
-      def handle(methodHandler: MethodHandler) = methodHandler.handleBasicPublish(this)
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicPublish(channelId, this)
 
       def argSize = 2 + exchangeName.size + routingKey.size + 8
 
