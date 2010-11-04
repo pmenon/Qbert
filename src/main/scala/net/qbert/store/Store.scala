@@ -1,1 +1,3 @@
-package net.qb
+package net.qbert.store
+
+class Store

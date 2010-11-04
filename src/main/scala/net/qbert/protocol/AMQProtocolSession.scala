@@ -12,7 +12,7 @@ trait AMQProtocolSession extends ChannelManager {
   var methodFactory: MethodFactory = null
   var maxFrameSize = None
 
-  def virtualHost_=(host: AMQVirtualHost) = Some(host)
+  //def virtualHost_=(host: AMQVirtualHost) = Some(host)
   def maxFrameSize_=(frameSize: Int) = Some(frameSize)
 
   def writeFrame(frame: Frame) = conn writeFrame frame

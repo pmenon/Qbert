@@ -16,10 +16,10 @@ class QbertNetworkTest extends Specification {
       val c = cf.newConnection()
       val ch = c.createChannel()
       c.createChannel()
-      //c.createChannel()
-      //c.createChannel()
+      c.createChannel()
+      c.createChannel()
       
-      
+      ch.queueDeclare("test", true, true, true, new java.util.HashMap)
     }
   }
 } 

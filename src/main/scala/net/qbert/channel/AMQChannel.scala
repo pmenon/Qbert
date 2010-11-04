@@ -6,11 +6,11 @@ import net.qbert.framing.{ ContentBody, ContentHeader, Frame, Method }
 import net.qbert.logging.Logging
 import net.qbert.message.{ MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
-import net.qbert.queue.QueueConsumer
 import net.qbert.subscription.Subscription
 
 import scala.actors.Actor
 import scala.actors.Actor._
+import net.qbert.queue.{QueueEntry, QueueConsumer}
 
 object AMQChannel {
   val systemChannelId = 0
@@ -71,6 +71,9 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     exit()
   }
 
+
+  def onEnqueue(e: QueueEntry) = {}
+  def onDequeue(e: QueueEntry) = {}
 
 
 }

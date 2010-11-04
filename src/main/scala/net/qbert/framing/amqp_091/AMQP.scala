@@ -245,8 +245,8 @@ object AMQP_091 {
       val classId = 60
       val methodId = 40
 
-      def mandatory = (bitField & 0x1) != 0
-      def immediate = (bitField & 0x2) != 0
+      def mandatory = (bitField & (1 << 0)) != 0
+      def immediate = (bitField & (1 << 1)) != 0
 
       def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicPublish(channelId, this)
 
@@ -262,5 +262,59 @@ object AMQP_091 {
       override def toString() = "#Basic.Publish<exchange="+exchangeName+",routingKey="+routingKey+">"
     }
   }
+
+  object Queue {
+    object Declare extends CanReadFrom[Declare] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new Declare(fr.readShort, fr.readShortString, fr.readOctet, fr.readFieldTable)
+    }
+
+    private[AMQP_091] case class Declare(ticket: Short, queueName: AMQShortString, bitField: Byte, args: AMQFieldTable) extends AMQP.Queue.Declare {
+      val classId = 50
+      val methodId = 10
+
+      def passive = (bitField & (1 << 0)) != 0
+      def durable = (bitField & (1 << 1)) != 0
+      def exclusive = (bitField & (1 << 2)) != 0
+      def autoDelete = (bitField & (1 << 3)) != 0
+      def noWait = (bitField & (1 << 4)) != 0
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleQueueDeclare(channelId, this)
+
+      def argSize = 2 + queueName.size + 1 + args.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(ticket)
+        fw.writeShortString(queueName)
+        fw.writeOctet(bitField)
+        fw.writeFieldTable(args)
+      }
+
+      override def toString() = "#Queue.Declare<name="+queueName+",passive="+passive+",durable="+durable+",exclusive="+exclusive+",autoDelete="+autoDelete+",noWait="+noWait+">"
+    }
+
+    object DeclareOk extends CanReadFrom[DeclareOk] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new DeclareOk(fr.readShortString, fr.readLong, fr.readLong)
+    }
+
+    private[AMQP_091] case class DeclareOk(queueName: AMQShortString, messageCount: Int, consumerCount: Int) extends AMQP.Queue.DeclareOk {
+      val classId = 50
+      val methodId = 11
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleQueueDeclareOk(channelId, this)
+
+      def argSize = queueName.size + 4 + 4
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShortString(queueName)
+        fw.writeLong(messageCount)
+        fw.writeLong(consumerCount)
+      }
+
+      override def toString() = "#Queue.DeclareOk<name="+queueName+",messageCount="+messageCount+",consumerCount="+consumerCount+">"
+    }
+  }
+
 
 }

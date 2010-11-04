@@ -58,4 +58,22 @@ object AMQP {
       def immediate: Boolean
     }
   }
+
+  object Queue {
+    trait Declare extends Method {
+      def ticket: Short
+      def queueName: AMQShortString
+      def passive: Boolean
+      def durable: Boolean
+      def exclusive: Boolean
+      def autoDelete: Boolean
+      def noWait: Boolean
+    }
+
+    trait DeclareOk extends Method {
+      def queueName: AMQShortString
+      def messageCount: Int
+      def consumerCount: Int
+    }
+  }
 }

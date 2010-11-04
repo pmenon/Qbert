@@ -93,7 +93,10 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
 
   def methodReceived(channelId: Int, method: Method) = {
     info("Method received : " + method)
-    methodHandler.handleMethod(channelId, method)
+    methodHandler.handleMethod(channelId, method) match {
+      case Left(error) => handleError(error)
+      case Right(res) => handleResponse(res)
+    }
   }
 
   def contentHeaderReceived(channelId: Int, header: ContentHeader) = {}

@@ -1,6 +1,6 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadFrom, FrameReader, FrameWriter }
 
 object AMQShortString extends CanReadFrom[AMQShortString] {
   def apply(s: String) = new AMQShortString(s)
