@@ -16,5 +16,7 @@ trait QueueManager {
     Some(queue)
   }
 
+  def lookupQueue(name: String) = queueRegistry.get(name)
+
 }
                                            

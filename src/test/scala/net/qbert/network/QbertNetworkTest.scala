@@ -19,7 +19,11 @@ class QbertNetworkTest extends Specification {
       c.createChannel()
       c.createChannel()
       
-      ch.queueDeclare("test", true, true, true, new java.util.HashMap)
+      ch.queueDeclare("queue1", true, true, true, new java.util.HashMap)
+      ch.exchangeDeclare("exchange1", "direct")
+      ch.queueBind("queue1", "exchange1", "route1")
+
+      ch.basicPublish("exchange1", "route1", null, "Hello, world!".getBytes("utf-8"))
     }
   }
 } 

@@ -6,6 +6,7 @@ import net.qbert.message.MessagePublishInfo
 import net.qbert.framing.{AMQP, AMQLongString, AMQShortString, Method}
 import net.qbert.logging.Logging
 import net.qbert.queue.QueueConfiguration
+import net.qbert.exchange.ExchangeConfiguration
 
 
 class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler with Logging {
@@ -44,7 +45,7 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
   def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open) = {
     info("Channel.Open received: " + channelOpen)
 
-    val c = session createChannel channelId
+    val c = session.createChannel(channelId)
     val openok = session.methodFactory.createChannelOpenOk(AMQLongString("channel-"+c.channelId.toString))
     val response = openok.generateFrame(channelId)
 
@@ -63,6 +64,19 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
     success()
   }
 
+  def handleExchangeDeclare(channelId: Int, declare: AMQP.Exchange.Declare) = {
+    val exchangeConfig = ExchangeConfiguration(declare.exchangeName.get, declare.exchangeType.get, declare.durable, declare.autoDelete, declare.internal)
+    
+    session.virtualHost.map(_.createExchange(exchangeConfig))
+    
+    if(!declare.noWait) {
+      val res = session.methodFactory.createExchangeDeclareOk()
+      success(res.generateFrame(channelId))
+    } else {
+      success()
+    }
+  }
+
   def handleQueueDeclare(channelId: Int, declare: AMQP.Queue.Declare) = {
     val queueConfig = QueueConfiguration(declare.queueName.get, session.virtualHost.get, declare.durable, declare.exclusive, declare.autoDelete)
 
@@ -71,8 +85,35 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
     if(!declare.noWait) {
       val res = session.methodFactory.createQueueDeclareOk(declare.queueName, 0, 0)
       success(res.generateFrame(channelId))
-    } else
+    } else {
       success()
+    }
+  }
+
+  def handleQueueBind(channelId: Int, bind: AMQP.Queue.Bind) = {
+    val ex = session.virtualHost.map(_.lookupExchange(bind.exchangeName.get)).getOrElse(None)
+    val q = session.virtualHost.map(_.lookupQueue(bind.queueName.get)).getOrElse(None)
+
+    val res = (ex, q) match {
+      case (Some(exchange), Some(queue)) =>
+        exchange.bind(queue, bind.routingKey.get)
+        val res = session.methodFactory.createQueueBindOk()
+        if(!bind.noWait) success(res.generateFrame(channelId)) else success()
+      case (None, Some(_)) => error(QueueDoesNotExist(bind.queueName.get))
+      case _ => error(ExchangeDoesNotExist(bind.exchangeName.get))
+    }
+
+    res
+       
+    /*
+    ex.map( (exchange) =>
+      q.map( (queue) =>
+        exchange.bind(queue, bind.routingKey.get)
+        val res = session.methodFactory.createQueueBindOk()
+        success(res.generateFrame(channelId))
+      ).getOrElse( error(QueueDoesNotExist(bind.queueName)) )
+    ).getOrElse( error(ExchangeDoesNotExist(bind.exchangeName)) )
+    */
 
   }
 

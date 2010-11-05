@@ -263,7 +263,57 @@ object AMQP_091 {
     }
   }
 
+  object Exchange {
+    object Declare extends CanReadFrom[Declare] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new Declare(fr.readShort, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
+    }
+
+    private[AMQP_091] case class Declare(ticket: Short, exchangeName: AMQShortString, exchangeType: AMQShortString, bitField: Byte, args: AMQFieldTable) extends AMQP.Exchange.Declare {
+      val classId = 40
+      val methodId = 10
+
+      def passive = (bitField & (1 << 0)) != 0
+      def durable = (bitField & (1 << 1)) != 0
+      def autoDelete = (bitField & (1 << 2)) != 0
+      def internal = (bitField & (1 << 3)) != 0
+      def noWait = (bitField & (1 << 4)) != 0
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleExchangeDeclare(channelId, this)
+      
+      def argSize = 2 + exchangeName.size + exchangeType.size + 1 + args.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(ticket)
+        fw.writeShortString(exchangeName)
+        fw.writeShortString(exchangeType)
+        fw.writeOctet(bitField)
+        fw.writeFieldTable(args)
+      }
+    }
+
+    object DeclareOk extends CanReadFrom[DeclareOk] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new DeclareOk
+    }
+
+    private[AMQP_091] case class DeclareOk() extends AMQP.Exchange.DeclareOk {
+      val classId = 40
+      val methodId = 11
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleExchangeDeclareOk(channelId, this)
+
+      def argSize = 0
+      
+      def writeArguments(fw: FrameWriter) = {}
+    }
+
+  }
+
+  // Queue
   object Queue {
+
+    // Queue.Declare
     object Declare extends CanReadFrom[Declare] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new Declare(fr.readShort, fr.readShortString, fr.readOctet, fr.readFieldTable)
@@ -293,6 +343,7 @@ object AMQP_091 {
       override def toString() = "#Queue.Declare<name="+queueName+",passive="+passive+",durable="+durable+",exclusive="+exclusive+",autoDelete="+autoDelete+",noWait="+noWait+">"
     }
 
+    // Queue.DeclareOk
     object DeclareOk extends CanReadFrom[DeclareOk] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new DeclareOk(fr.readShortString, fr.readLong, fr.readLong)
@@ -313,6 +364,49 @@ object AMQP_091 {
       }
 
       override def toString() = "#Queue.DeclareOk<name="+queueName+",messageCount="+messageCount+",consumerCount="+consumerCount+">"
+    }
+
+    // Queue.Bind
+    object Bind extends CanReadFrom[Bind] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new Bind(fr.readShort, fr.readShortString, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
+    }
+
+    private[AMQP_091] case class Bind(ticket: Short, queueName: AMQShortString, exchangeName: AMQShortString, routingKey: AMQShortString, bitField: Byte, args: AMQFieldTable) extends AMQP.Queue.Bind {
+      val classId = 50
+      val methodId = 20
+
+      def noWait = (bitField & (1 << 0)) != 0
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleQueueBind(channelId, this)
+
+      def argSize = 2 + queueName.size + exchangeName.size + routingKey.size + 1 + args.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(ticket)
+        fw.writeShortString(queueName)
+        fw.writeShortString(exchangeName)
+        fw.writeShortString(routingKey)
+        fw.writeOctet(bitField)
+        fw.writeFieldTable(args)
+      }
+
+    }
+
+    object BindOk extends CanReadFrom[BindOk] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = new BindOk
+    }
+
+    private[AMQP_091] case class BindOk() extends AMQP.Queue.BindOk {
+      val classId = 50
+      val methodId = 21
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleQueueBindOk(channelId, this)
+
+      def argSize = 0
+
+      def writeArguments(fw: FrameWriter) = {}
     }
   }
 

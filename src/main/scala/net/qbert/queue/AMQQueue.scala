@@ -1,19 +1,21 @@
 package net.qbert.queue
 
 import net.qbert.store.Store
+import net.qbert.message.AMQMessage
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
 
 import scala.collection.mutable
 import net.qbert.protocol.AMQProtocolSession
 
-case class QueueEntry(msg: String)
-
 abstract class AMQQueue(val name: String, val virtualHost: AMQVirtualHost) {
   val entries = new QueueEntryList(this)
   val subscribers = mutable.ArrayBuffer[Subscription]()
 
-  def enqueue(entry: QueueEntry): Unit = entries.addEntry(entry)
+  def enqueue(m: AMQMessage): Unit = {
+    println("Queue " + name + " received message: " + new String(m.body.buffer, "utf-8"))
+    entries.addEntry(m)
+  }
   def dequeue(): QueueEntry = entries.removeEntry()
   def subscribe(subscription: Subscription): Unit = subscribers += subscription
 
@@ -23,9 +25,9 @@ abstract class AMQQueue(val name: String, val virtualHost: AMQVirtualHost) {
 trait Durable extends AMQQueue {
   val store: Store
 
-  abstract override def enqueue(entry: QueueEntry) = {
+  abstract override def enqueue(m: AMQMessage) = {
     // store.storeEnqueue
-    super.enqueue(entry)
+    super.enqueue(m)
   }
 }
 

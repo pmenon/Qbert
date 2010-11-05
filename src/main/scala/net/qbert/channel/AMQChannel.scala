@@ -4,13 +4,13 @@ import net.qbert.connection.AMQConnection
 
 import net.qbert.framing.{ ContentBody, ContentHeader, Frame, Method }
 import net.qbert.logging.Logging
-import net.qbert.message.{ MessagePublishInfo, PartialMessage }
+import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 
 import scala.actors.Actor
 import scala.actors.Actor._
-import net.qbert.queue.{QueueEntry, QueueConsumer}
+import net.qbert.queue.{AMQQueue, QueueEntry, QueueConsumer}
 
 object AMQChannel {
   val systemChannelId = 0
@@ -63,7 +63,22 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     }
   }
 
-  def handleContentBody(contenBody: ContentBody) = {}
+  def handleContentBody(body: ContentBody) = {
+    info("Channel {} received content body {}", channelId, body)
+    partialMessage match {
+      case Some(PartialMessage(Some(p), Some(h))) => 
+        partialMessage.get.addContent(body) 
+        if(partialMessage.get.sizeLeft == 0) deliverMessage
+      case _ => error("Unexpected frame received.  Either header was not received before body or publish was not received")
+    }
+  }
+
+  def deliverMessage() = {
+    val message = AMQMessage(1, partialMessage.get.info.get, partialMessage.get.header.get, partialMessage.get.body)
+    val exchange = session.virtualHost.map(_.lookupExchange(message.info.exchangeName)).getOrElse(None)
+    val queues = exchange.map(_.route(message, message.info.routingKey)).getOrElse(List[AMQQueue]())
+    queues.foreach(_.enqueue(message))
+  }
 
   def closeChannel() = {
     //do much much more here

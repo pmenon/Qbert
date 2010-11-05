@@ -21,7 +21,9 @@ trait MethodFactory extends CanReadFrom[Option[Method]] {
   def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short): AMQP.Connection.Tune
   def createConnectionOpenOk(knownHosts: AMQShortString): AMQP.Connection.OpenOk
   def createChannelOpenOk(channelId: AMQLongString): AMQP.Channel.OpenOk
+  def createExchangeDeclareOk(): AMQP.Exchange.DeclareOk
   def createQueueDeclareOk(queueName: AMQShortString, messageCount: Int, consumerCount: Int): AMQP.Queue.DeclareOk
+  def createQueueBindOk(): AMQP.Queue.BindOk
 }
 
 class MethodFactory_091 extends MethodFactory with Logging {
@@ -42,8 +44,15 @@ class MethodFactory_091 extends MethodFactory with Logging {
       case (20, 10) => Some(Channel.Open(fr))
       case (20, 11) => Some(Channel.OpenOk(fr))
 
+      case (40, 10) => Some(Exchange.Declare(fr))
+      case (40, 11) => Some(Exchange.DeclareOk(fr))
+
       case (50, 10) => Some(Queue.Declare(fr))
-      case (50, 20) => Some(Queue.DeclareOk(fr))
+      case (50, 11) => Some(Queue.DeclareOk(fr))
+      case (50, 20) => Some(Queue.Bind(fr))
+      case (50, 21) => Some(Queue.BindOk(fr))
+
+      case (60, 40) => Some(Basic.Publish(fr))
 
       case _ => info("No method matches classId={} methodId={}", classId, methodId); None
     }
@@ -67,8 +76,16 @@ class MethodFactory_091 extends MethodFactory with Logging {
     Channel.OpenOk(channelId)
   }
 
+  def createExchangeDeclareOk() = {
+    Exchange.DeclareOk()
+  }
+
   def createQueueDeclareOk(queueName: AMQShortString, messageCount: Int, consumerCount: Int) = {
     Queue.DeclareOk(queueName, messageCount, consumerCount)
+  }
+
+  def createQueueBindOk() = {
+    Queue.BindOk()
   }
   
 }
@@ -94,7 +111,15 @@ class MethodFactory_081 extends MethodFactory with Logging {
     Channel.OpenOk(channelId)
   }
 
+  def createExchangeDeclareOk() = {
+    Exchange.DeclareOk()
+  }
+
   def createQueueDeclareOk(queueName: AMQShortString, messageCount: Int, consumerCount: Int) = {
     Queue.DeclareOk(queueName, messageCount, consumerCount)
+  }
+
+  def createQueueBindOk() = {
+    Queue.BindOk()
   }
 }

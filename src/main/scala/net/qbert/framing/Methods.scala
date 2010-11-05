@@ -59,6 +59,22 @@ object AMQP {
     }
   }
 
+  object Exchange {
+    trait Declare extends Method {
+      def ticket: Short
+      def exchangeName: AMQShortString
+      def exchangeType: AMQShortString
+      def passive: Boolean
+      def durable: Boolean
+      def autoDelete: Boolean
+      def internal: Boolean
+      def noWait: Boolean
+      def args: AMQFieldTable
+    }
+
+    trait DeclareOk extends Method 
+  }
+
   object Queue {
     trait Declare extends Method {
       def ticket: Short
@@ -75,5 +91,16 @@ object AMQP {
       def messageCount: Int
       def consumerCount: Int
     }
+
+    trait Bind extends Method {
+      def ticket: Short
+      def queueName: AMQShortString
+      def exchangeName: AMQShortString
+      def routingKey: AMQShortString
+      def noWait: Boolean
+      def args: AMQFieldTable
+    }
+
+    trait BindOk extends Method
   }
 }

@@ -48,7 +48,7 @@ class ContentHeaderTest extends Specification {
                             None, Some(AMQShortString("message1")), 
                             Some(new JDate(10000)), Some(AMQShortString("type")), 
                             Some(AMQShortString("userId1")), Some(AMQShortString("1")), Some(AMQShortString("cl1")))
-      val headers = ContentHeader(60, 14, basicProps)
+      val headers = ContentHeader(60, 14, 100, basicProps)
       val writer = new FrameWriter(headers.size)
       headers writeTo writer
 

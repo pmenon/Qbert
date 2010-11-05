@@ -9,6 +9,8 @@ abstract class MethodError(reason: String)
 case class UnsupportedMethod(method: String) extends MethodError("Method " + method + " is unsupported by the broker")
 case class UnexpectedMethod(method: String) extends MethodError("Method " + method + " was unexpected in current broked state")
 case class UnknownVirtualHost(host: String) extends MethodError("VirtualHost " + host + " does not exist")
+case class QueueDoesNotExist(queue: String) extends MethodError("Queue with name " + queue + " does not exist")
+case class ExchangeDoesNotExist(exchange: String) extends MethodError("Exchange with name " + exchange + " does not exist")
 
 object MethodHandler {
   def apply(session: AMQProtocolSession) = new SimpleMethodHandler(session)
@@ -34,9 +36,15 @@ trait MethodHandler {
   def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open): Either[MethodError, Option[Frame]]
   def handleChannelOpenOk(channelId: Int, channelOpenOk: AMQP.Channel.OpenOk): Either[MethodError, Option[Frame]] = error(UnsupportedMethod("Channel.OpenOk"))
 
+  // Exchange
+  def handleExchangeDeclare(channelId: Int, declare: AMQP.Exchange.Declare): Either[MethodError, Option[Frame]]
+  def handleExchangeDeclareOk(channelId: Int, declareOk: AMQP.Exchange.DeclareOk) = error(UnsupportedMethod("Exchange.DeclareOk"))
+
   // Queue
   def handleQueueDeclare(channelId: Int, declare: AMQP.Queue.Declare): Either[MethodError, Option[Frame]]
   def handleQueueDeclareOk(channelId: Int, declareOk: AMQP.Queue.DeclareOk) = error(UnsupportedMethod("Queue.DeclareOk"))
+  def handleQueueBind(channelId: Int, bind: AMQP.Queue.Bind): Either[MethodError, Option[Frame]]
+  def handleQueueBindOk(channelId: Int, bindOk: AMQP.Queue.BindOk) = error(UnsupportedMethod("Queue.BindOk"))
 
   // Basic
   def handleBasicPublish(channelId: Int, publish: AMQP.Basic.Publish): Either[MethodError, Option[Frame]]

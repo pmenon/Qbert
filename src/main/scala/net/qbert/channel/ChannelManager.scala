@@ -17,7 +17,7 @@ trait ChannelManager {self: AMQProtocolSession =>
 
   def channel(channelId: Int) = getChannel(channelId)
 
-  def getChannel(channelId: Int): Option[AMQChannel] = channelMap.get(channelId)
+  def getChannel(channelId: Int) = channelMap.get(channelId)
 
   def createChannel(channelId: Int): AMQChannel = {
     val channel = new AMQChannel(channelId, this)

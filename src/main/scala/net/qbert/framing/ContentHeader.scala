@@ -70,18 +70,19 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
 object ContentHeader extends CanReadFrom[ContentHeader] {
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
-    new ContentHeader(fr.readShort, fr.readShort, BasicProperties(fr))
+    new ContentHeader(fr.readShort, fr.readShort, fr.readLongLong, BasicProperties(fr))
   }
 }
 
-case class ContentHeader(classId: Short, weight: Short, props: BasicProperties) extends FramePayload {
+case class ContentHeader(classId: Short, weight: Short, bodySize: Long, props: BasicProperties) extends FramePayload {
   val typeId = Frame.FRAME_CONTENT
 
-  def size() = 2 + 2 + props.size
+  def size() = 2 + 2 + 8 + props.size
 
   def writeTo(fw: FrameWriter) = {
     fw.writeShort(classId)
     fw.writeShort(weight)
+    fw.writeLongLong(bodySize)
     fw.writeBasicProperties(props)
   }
 
