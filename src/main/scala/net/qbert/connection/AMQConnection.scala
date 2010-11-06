@@ -4,8 +4,7 @@ import net.qbert.protocol.ProtocolVersion
 import net.qbert.framing.AMQDataBlock
 import net.qbert.network.netty.NettyChannel
 
-
-sealed case class ConnectionState 
+sealed abstract class ConnectionState 
 case object AwaitingConnectionStartOk extends ConnectionState
 case object AwaitingConnectionTuneOk extends ConnectionState
 case object AwaitingConnectionOpen extends ConnectionState

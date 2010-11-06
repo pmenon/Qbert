@@ -1,6 +1,8 @@
 package net.qbert.queue
 
+import net.qbert.message.AMQMessage
+
 trait QueueConsumer {
-  def onEnqueue(entry: QueueEntry): Unit
-  def onDequeue(entry: QueueEntry): Unit
+  def onEnqueue(msg: AMQMessage): Boolean
+  def onDequeue(msg: AMQMessage): Boolean
 }

@@ -17,6 +17,11 @@ class MemoryStore extends Store {
   def retrieveMessage(messageId: Int) = messages.get(messageId)
 
   def storeQueue(q: AMQQueue) = queues.put(q.name, q)
+  def retrieveQueue(q: AMQQueue) = queues.get(q.name)
+  def retrieveQueueMessages(q: AMQQueue) = queueMessages.get(q.name).map((messageIds) =>
+    messageIds.foldLeft(List[AMQMessage]())( (acc,mId)=> 
+      messages.get(mId).map(_ :: acc).getOrElse(acc)
+    )).getOrElse(List[AMQMessage]())
   def removeQueue(q: AMQQueue) = queues.remove(q.name)
   def storeQueueMessage(m: AMQMessage, q: AMQQueue) = queueMessages.getOrElseUpdate(q.name, new mutable.HashSet[Int]()) += m.id
   def removeQueueMessage(m: AMQMessage, q: AMQQueue) = queueMessages.get(q.name).map(_ -= m.id)

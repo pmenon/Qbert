@@ -14,7 +14,9 @@ trait Store {
   // queues
   def storeQueue(q: AMQQueue): Unit
   def removeQueue(q: AMQQueue): Unit
+  def retrieveQueue(q: AMQQueue): Option[AMQQueue]
   def storeQueueMessage(m: AMQMessage, q: AMQQueue): Unit
+  def retrieveQueueMessages(q: AMQQueue): List[AMQMessage]
   def removeQueueMessage(m: AMQMessage, q: AMQQueue): Unit
 
   // exchanges

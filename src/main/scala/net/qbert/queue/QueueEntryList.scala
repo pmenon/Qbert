@@ -11,7 +11,11 @@ class QueueEntryList(queue: AMQQueue) {
 
   def addEntry(m: AMQMessage) = entries.enqueue(QueueEntry(m))
 
-  def removeEntry() = entries.dequeue
+  def removeEntry(): Option[QueueEntry] = try {
+      Some(entries.dequeue)
+    } catch {
+      case e: NoSuchElementException => None
+  }
 
   def compact() = {}
 }

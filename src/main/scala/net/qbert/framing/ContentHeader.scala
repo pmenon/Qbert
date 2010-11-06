@@ -50,6 +50,7 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
 
   // TODO: we could do some performance enhancements by iterating through the params once
   // to generate both the bitfield props and calcualte the size
+  // lazy val (props, size) = params.foldLeft((0,0))( (acc, o) => ( (acc << 1) | (if(o.isDefined) 1 else 0), acc._2 + (if(o.isDefined) o.get.size else 0) ) )
 
   def size() = {
     2 + params.foldLeft(0)( (acc, o) => acc + (if(o.isDefined) o.get.size else 0) )

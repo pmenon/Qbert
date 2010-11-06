@@ -2,4 +2,10 @@ package net.qbert.message
 
 import net.qbert.framing.{ ContentBody, ContentHeader }
 
-case class AMQMessage(id: Int, info: MessagePublishInfo, header: ContentHeader, body: ContentBody)
+class AMQMessage(val id: Int, val info: MessagePublishInfo, val header: ContentHeader, val body: ContentBody) {
+
+  def isMandatory = info.mandatory
+  def isImmediate() = info.immediate
+  def isPersistent() = header.props.deliveryMode.map(_ != 0).getOrElse(false)
+
+}

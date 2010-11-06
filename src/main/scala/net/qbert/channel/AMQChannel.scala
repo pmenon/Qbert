@@ -31,6 +31,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   // start as soon as we instantiate
   start
 
+  // the main API for a channel
   def publishReceived(info: MessagePublishInfo) = this ! PublishReceived(info)
   def publishContentHeader(header: ContentHeader) = this ! ContentHeaderReceived(header)
   def publishContentBody(body: ContentBody) = this ! ContentBodyReceived(body)
@@ -46,7 +47,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     case Close() => closeChannel()
   }
 
-  def handlePublishFrame(publishInfo: MessagePublishInfo) = {
+  private def handlePublishFrame(publishInfo: MessagePublishInfo) = {
     info("Channel {} received basic.publish {}", channelId, publishInfo)
     partialMessage match {
       case None => partialMessage = Some(PartialMessage(Some(publishInfo), None))
@@ -54,7 +55,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     }
   }
 
-  def handleContentHeader(header: ContentHeader) = {
+  private def handleContentHeader(header: ContentHeader) = {
     info("Channel {} received content header {}", channelId, header)
     partialMessage match {
       case Some(PartialMessage(Some(p), None)) => 
@@ -63,7 +64,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     }
   }
 
-  def handleContentBody(body: ContentBody) = {
+  private def handleContentBody(body: ContentBody) = {
     info("Channel {} received content body {}", channelId, body)
     partialMessage match {
       case Some(PartialMessage(Some(p), Some(h))) => 
@@ -73,8 +74,11 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     }
   }
 
-  def deliverMessage() = {
-    val message = AMQMessage(1, partialMessage.get.info.get, partialMessage.get.header.get, partialMessage.get.body)
+  private def deliverMessage() = {
+    val message = new AMQMessage(1, partialMessage.get.info.get, partialMessage.get.header.get, partialMessage.get.body)
+    if(message.isPersistent()) session.virtualHost.foreach(_.store.storeMessage(message))
+
+
     val exchange = session.virtualHost.map(_.lookupExchange(message.info.exchangeName)).getOrElse(None)
     val queues = exchange.map(_.route(message, message.info.routingKey)).getOrElse(List[AMQQueue]())
     queues.foreach(_.enqueue(message))
@@ -87,8 +91,8 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   }
 
 
-  def onEnqueue(e: QueueEntry) = {}
-  def onDequeue(e: QueueEntry) = {}
+  def onEnqueue(msg: AMQMessage) = { println("got message"); true }
+  def onDequeue(msg: AMQMessage) = { true }
 
 
 }
