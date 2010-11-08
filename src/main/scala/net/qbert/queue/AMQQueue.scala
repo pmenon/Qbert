@@ -1,70 +1,130 @@
 package net.qbert.queue
 
 import net.qbert.store.Store
-import net.qbert.message.AMQMessage
+import net.qbert.message.{AMQMessage, AMQMessageReference}
+import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
 
+import scala.actors.Future
+import scala.actors.Actor
+import scala.actors.Actor._
 import scala.collection.mutable
-import net.qbert.protocol.AMQProtocolSession
 
-abstract class AMQQueue(val name: String, val virtualHost: AMQVirtualHost) {
+trait AMQQueue {
+  val name: String
+  val virtualHost: AMQVirtualHost
+
+  def enqueue(message: AMQMessage): Unit
+  def enqueueAndWait(message: AMQMessage): Future[QueueMessages.DeliveryResponse]
+  def dequeue(entry: QueueEntry): Unit
+  def subscribe(subscription: Subscription): Unit
+  def unsubscribe(subscription: Subscription): Unit
+}
+
+sealed abstract class QueueMessage
+object QueueMessages {
+  case class EnqueueMessage(message: AMQMessageReference) extends QueueMessage
+  case class DequeueMessage(entry: QueueEntry) extends QueueMessage
+  case class SubscribeMessage(subscription: Subscription) extends QueueMessage
+  case class UnsubscribeMessage(subscription: Subscription) extends QueueMessage
+  case class DeliveryResponse(delivered: Boolean) extends QueueMessage
+}
+
+trait ActorBasedQueue extends Actor with AMQQueue {
+  import QueueMessages._
+
+  start
+
+  def enqueue(message: AMQMessage) = this ! EnqueueMessage(message.reference)
+  def enqueueAndWait(message: AMQMessage) = (this !! EnqueueMessage(message.reference)).asInstanceOf[Future[DeliveryResponse]]
+  def dequeue(entry: QueueEntry) = this ! DequeueMessage(entry)
+  def subscribe(sub: Subscription) = this ! SubscribeMessage(sub)
+  def unsubscribe(sub: Subscription) = this ! UnsubscribeMessage(sub)
+
+  def act() = loop(mainLoop)
+
+  def mainLoop() = react {
+    case EnqueueMessage(message) => 
+      val canNotify = handleEnqueue(message)
+      if(message.m.isImmediate()) reply(DeliveryResponse(canNotify))
+    case DequeueMessage(entry) => handleDequeue(entry)
+    case SubscribeMessage(sub) => handleSubscribe(sub)
+    case UnsubscribeMessage(sub) => handleUnsubscribe(sub)
+  }
+  
+  protected def handleEnqueue(message: AMQMessageReference): Boolean
+  protected def handleDequeue(entry: QueueEntry): Unit
+  protected def handleSubscribe(sub: Subscription): Unit
+  protected def handleUnsubscribe(sub: Subscription): Unit
+  protected def notifySubscribers(entry: QueueEntry): Boolean
+} 
+
+abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) extends ActorBasedQueue {
+
   val entries = new QueueEntryList(this)
   val subscribers = mutable.ArrayBuffer[Subscription]()
 
-  def enqueue(m: AMQMessage): Unit = {
+  def handleEnqueue(m: AMQMessageReference): Boolean = {
+    val entry = QueueEntry(m)
     // we can notify if we have subscribers and one accepts the message
-    val canNotify = subscribers.length != 0 && notifySubscribers(m)
+    val canNotify = subscribers.length != 0 && notifySubscribers(entry)
     
     // add the entry
-    entries.addEntry(m)
+    if(!(m.m.isImmediate() && !canNotify)) entries.addEntry(entry)
+
+    canNotify
   }
-  def dequeue(): Option[AMQMessage] = entries.removeEntry.map(_.msg).orElse(None)
-  def subscribe(subscription: Subscription): Unit = subscribers += subscription
+  def handleDequeue(entry: QueueEntry) = entries.removeEntry(entry)
+  def handleSubscribe(subscription: Subscription): Unit = subscribers += subscription
+  def handleUnsubscribe(subscription: Subscription): Unit = subscribers -= subscription
 
-  def canBeDelivered(msg: AMQMessage, sub: Subscription) = sub.consumer.onEnqueue(msg)
-
-  def notifySubscribers(msg: AMQMessage): Boolean = (subscribers.takeWhile(!canBeDelivered(msg, _)).length) != subscribers.length
+  def canBeDelivered(entry: QueueEntry, sub: Subscription) = sub.consumer.onEnqueue(entry)
+  def notifySubscribers(entry: QueueEntry) = (subscribers.takeWhile(!canBeDelivered(entry, _)).length) != subscribers.length
 }
 
-trait Durable extends AMQQueue {
+trait Durable extends BaseQueue {
   val store: Store
 
   // store this queue
   store.storeQueue(this)
 
-  abstract override def enqueue(m: AMQMessage) = {
-    store.storeQueueMessage(m, this)
-    super.enqueue(m)
+  abstract override def handleEnqueue(m: AMQMessageReference) = {
+    if(m.m.isPersistent) store.storeQueueMessage(m.m, this)
+    super.handleEnqueue(m)
   }
 
-  abstract override def dequeue() = {
-    val m = super.dequeue()
-    if(m.isDefined) store.removeQueueMessage(m.get, this)
-    m
+  abstract override def handleDequeue(entry: QueueEntry) = {
+    super.dequeue(entry)
+    if(entry.msg.m.isPersistent()) store.removeQueueMessage(entry.msg.m, this)
   }
 }
 
-trait Exclusive extends AMQQueue {
+trait Exclusive extends BaseQueue {
   val exclusiveOwner: AMQProtocolSession
 
-  abstract override def notifySubscribers(m: AMQMessage) = {
+  abstract override def notifySubscribers(entry: QueueEntry) = {
     //exclusiveSubscriber.consumer.onEnqueue(entry)
-    super.notifySubscribers(m)
+    super.notifySubscribers(entry)
     true
   }
 }
 
-trait AutoDelete extends AMQQueue {
+trait AutoDelete extends BaseQueue {
+  abstract override def unsubscribe(sub: Subscription) = {
+    super.unsubscribe(sub)
+    if(subscribers.length <= 0) delete()
+  }
 
+  def delete() = {}
 }
 
 
 class SimpleAMQQueue(name: String, virtualHost: AMQVirtualHost) 
-  extends AMQQueue(name, virtualHost)
+  extends BaseQueue(name, virtualHost)
 
 class DurableQueue(name: String, virtualHost: AMQVirtualHost, val store: Store) 
-  extends AMQQueue(name, virtualHost) with Durable
+  extends BaseQueue(name, virtualHost) with Durable
 
 class DurableExclusiveQueue(name: String, virtualHost: AMQVirtualHost, store: Store, val exclusiveOwner: AMQProtocolSession)
   extends DurableQueue(name, virtualHost, store) with Exclusive
@@ -76,10 +136,10 @@ class DurableAutoDeleteQueue(name: String, virtualHost: AMQVirtualHost, store: S
   extends DurableQueue(name, virtualHost, store) with AutoDelete
 
 class ExclusiveQueue(name: String, virtualHost: AMQVirtualHost, val exclusiveOwner: AMQProtocolSession)
-  extends AMQQueue(name, virtualHost) with Exclusive
+  extends BaseQueue(name, virtualHost) with Exclusive
 
 class ExclusiveAutoDeleteQueue(name: String, virtualHost: AMQVirtualHost, exclusiveOwner: AMQProtocolSession)
   extends ExclusiveQueue(name, virtualHost, exclusiveOwner) with AutoDelete
 
 class AutoDeleteQueue(name: String, virtualHost: AMQVirtualHost) 
-  extends AMQQueue(name, virtualHost) with AutoDelete
+  extends BaseQueue(name, virtualHost) with AutoDelete

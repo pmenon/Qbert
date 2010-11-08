@@ -30,8 +30,7 @@ class DirectExchange(exchangeName: String) extends AMQExchange(exchangeName) {
 
   def route(message: AMQMessage, routingKey: String) = {
     bindings.get(routingKey).map((set) =>
-      set.foldLeft(List[AMQQueue]())( (l,b) => 
-        b.queue :: l)
+      set.foldLeft(List[AMQQueue]())( (l,b) => b.queue :: l)
     ).getOrElse(List[AMQQueue]())
   }
 
