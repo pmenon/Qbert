@@ -8,17 +8,17 @@ import net.qbert.protocol.AMQProtocolDriver
 import org.jboss.netty.channel.{ChannelStateEvent, ChannelHandlerContext, SimpleChannelHandler, MessageEvent, ExceptionEvent}
 
 class NettyDelegatingHandler extends SimpleChannelHandler with Logging {
-  var stateHandler: AMQProtocolDriver = null
+  var protocolDriver: AMQProtocolDriver = null
 
   final override def channelConnected(c: ChannelHandlerContext, e: ChannelStateEvent) = {
     debug("Channel connected ...")
-    stateHandler = new AMQProtocolDriver(new AMQConnection(new NettyChannel(e.getChannel)))
+    protocolDriver = new AMQProtocolDriver(new AMQConnection(new NettyChannel(e.getChannel)))
   }
 
   final override def messageReceived(c: ChannelHandlerContext, m: MessageEvent) = {
     debug("Message received ...")
     m getMessage match {
-      case dataBlock: AMQDataBlock => stateHandler dataBlockReceived dataBlock
+      case dataBlock: AMQDataBlock => protocolDriver dataBlockReceived dataBlock
       case _ => error("Unknown message received ...")
     }
   }

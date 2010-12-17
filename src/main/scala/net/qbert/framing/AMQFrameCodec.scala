@@ -1,7 +1,6 @@
 package net.qbert.framing
 
 import net.qbert.logging.Logging
-import net.qbert.framing.{Frame, MethodFactory_091}
 import net.qbert.network.{FrameReader, FrameWriter}
 import net.qbert.protocol.ProtocolVersion
 
@@ -30,7 +29,7 @@ trait AMQFrameDecoder {
 class AMQFrameDecoderImpl(version: ProtocolVersion) extends AMQFrameDecoder with Logging {
   val methodFactory = MethodFactory.createWithVersion(version)
   val contentHeaderFactory = ContentHeaderFactory.createWithVersion(version)
-  val contentBodyFactory = ContentBody.readFrom(_:FrameReader)
+  val contentBodyFactory = ContentBody.readFrom(_:FrameReader, _:Int)
 
   def decode(fr: FrameReader): Option[Frame] = {
     val availablePayload = (fr readableBytes) - (1 + 2 + 4 + 1)
@@ -44,7 +43,7 @@ class AMQFrameDecoderImpl(version: ProtocolVersion) extends AMQFrameDecoder with
 
     val payload = if(typeId == Frame.FRAME_METHOD) methodFactory.createMethodFrom(fr)
                   else if (typeId == Frame.FRAME_CONTENT) contentHeaderFactory.createContentHeaderFrom(fr)
-                  else if (typeId == Frame.FRAME_BODY) contentBodyFactory(fr)
+                  else if (typeId == Frame.FRAME_BODY) contentBodyFactory(fr, size)
                   else None
 
     val frame = payload.map(x => Frame(typeId, channel, x)).orElse(None)

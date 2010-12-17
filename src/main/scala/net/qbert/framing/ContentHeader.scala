@@ -8,7 +8,7 @@ import java.util.{ Date => JDate }
 object BasicProperties extends CanReadFrom[BasicProperties] {
   
   class RicherBoolean(b: Boolean) {
-    def option[T](f: => T):Option[T] = if(b) Some(f) else None
+    def optionally[T](f: => T):Option[T] = if(b) Some(f) else None
   }
 
   implicit def booleanToRicherBoolean(b: Boolean) = new RicherBoolean(b)
@@ -17,20 +17,20 @@ object BasicProperties extends CanReadFrom[BasicProperties] {
   def readFrom(fr: FrameReader) = {
     val props = fr.readShort
     val basicProps = 0 to 14 map( i => ((props >> i) & 1) != 0 )
-    new BasicProperties(basicProps(13) option fr.readShortString,
-                        basicProps(12) option fr.readShortString,
-                        basicProps(11) option fr.readFieldTable,
-                        basicProps(10) option fr.readOctet,
-                        basicProps(9) option fr.readOctet,
-                        basicProps(8) option fr.readShortString,
-                        basicProps(7) option fr.readShortString,
-                        basicProps(6) option fr.readShortString,
-                        basicProps(5) option fr.readShortString,
-                        basicProps(4) option fr.readTimestamp,
-                        basicProps(3) option fr.readShortString,
-                        basicProps(2) option fr.readShortString,
-                        basicProps(1) option fr.readShortString,
-                        basicProps(0) option fr.readShortString)
+    new BasicProperties(basicProps(13) optionally fr.readShortString,
+                        basicProps(12) optionally fr.readShortString,
+                        basicProps(11) optionally fr.readFieldTable,
+                        basicProps(10) optionally fr.readOctet,
+                        basicProps(9) optionally fr.readOctet,
+                        basicProps(8) optionally fr.readShortString,
+                        basicProps(7) optionally fr.readShortString,
+                        basicProps(6) optionally fr.readShortString,
+                        basicProps(5) optionally fr.readShortString,
+                        basicProps(4) optionally fr.readTimestamp,
+                        basicProps(3) optionally fr.readShortString,
+                        basicProps(2) optionally fr.readShortString,
+                        basicProps(1) optionally fr.readShortString,
+                        basicProps(0) optionally fr.readShortString)
   }
                                
 }
@@ -77,7 +77,6 @@ object ContentHeader extends CanReadFrom[ContentHeader] {
 
 case class ContentHeader(classId: Short, weight: Short, bodySize: Long, props: BasicProperties) extends FramePayload {
   val typeId = Frame.FRAME_CONTENT
-
   def size() = 2 + 2 + 8 + props.size
 
   def writeTo(fw: FrameWriter) = {

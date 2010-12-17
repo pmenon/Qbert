@@ -2,13 +2,13 @@ package net.qbert.queue
 
 import net.qbert.store.Store
 import net.qbert.message.{AMQMessage, AMQMessageReference}
+import net.qbert.logging.Logging
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
 
 import scala.actors.Future
 import scala.actors.Actor
-import scala.actors.Actor._
 import scala.collection.mutable
 
 trait AMQQueue {
@@ -20,6 +20,7 @@ trait AMQQueue {
   def dequeue(entry: QueueEntry): Unit
   def subscribe(subscription: Subscription): Unit
   def unsubscribe(subscription: Subscription): Unit
+  def close: Unit
 }
 
 sealed abstract class QueueMessage
@@ -29,6 +30,7 @@ object QueueMessages {
   case class SubscribeMessage(subscription: Subscription) extends QueueMessage
   case class UnsubscribeMessage(subscription: Subscription) extends QueueMessage
   case class DeliveryResponse(delivered: Boolean) extends QueueMessage
+  case object StopQueue extends QueueMessage
 }
 
 trait ActorBasedQueue extends Actor with AMQQueue {
@@ -41,16 +43,18 @@ trait ActorBasedQueue extends Actor with AMQQueue {
   def dequeue(entry: QueueEntry) = this ! DequeueMessage(entry)
   def subscribe(sub: Subscription) = this ! SubscribeMessage(sub)
   def unsubscribe(sub: Subscription) = this ! UnsubscribeMessage(sub)
+  def close = this ! StopQueue
 
   def act() = loop(mainLoop)
 
   def mainLoop() = react {
-    case EnqueueMessage(message) => 
+    case EnqueueMessage(message) =>
       val canNotify = handleEnqueue(message)
       if(message.m.isImmediate()) reply(DeliveryResponse(canNotify))
     case DequeueMessage(entry) => handleDequeue(entry)
     case SubscribeMessage(sub) => handleSubscribe(sub)
     case UnsubscribeMessage(sub) => handleUnsubscribe(sub)
+    case StopQueue => handleStopQueue
   }
   
   protected def handleEnqueue(message: AMQMessageReference): Boolean
@@ -58,14 +62,16 @@ trait ActorBasedQueue extends Actor with AMQQueue {
   protected def handleSubscribe(sub: Subscription): Unit
   protected def handleUnsubscribe(sub: Subscription): Unit
   protected def notifySubscribers(entry: QueueEntry): Boolean
+  protected def handleStopQueue: Unit
 } 
 
-abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) extends ActorBasedQueue {
+abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) extends ActorBasedQueue with Logging {
 
   val entries = new QueueEntryList(this)
   val subscribers = mutable.ArrayBuffer[Subscription]()
 
   def handleEnqueue(m: AMQMessageReference): Boolean = {
+    info("Queue {} received a message: {}", name, new String(m.m.body.buffer, "utf-8"))
     val entry = QueueEntry(m)
     // we can notify if we have subscribers and one accepts the message
     val canNotify = subscribers.length != 0 && notifySubscribers(entry)
@@ -81,6 +87,11 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
 
   def canBeDelivered(entry: QueueEntry, sub: Subscription) = sub.consumer.onEnqueue(entry)
   def notifySubscribers(entry: QueueEntry) = (subscribers.takeWhile(!canBeDelivered(entry, _)).length) != subscribers.length
+
+  def handleStopQueue() = {
+    info("Queue {} is stopping ...", name)
+    exit()
+  }
 }
 
 trait Durable extends BaseQueue {

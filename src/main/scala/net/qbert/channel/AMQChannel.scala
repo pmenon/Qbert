@@ -1,31 +1,30 @@
 package net.qbert.channel
 
+import net.qbert.QbertError
 import net.qbert.framing.{ ContentBody, ContentHeader, Frame }
 import net.qbert.logging.Logging
 import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
-import net.qbert.queue.{ AMQQueue, QueueEntry, QueueConsumer, QueueMessages }
+import net.qbert.queue.{ AMQQueue, QueueEntry, QueueConsumer }
 
 import scala.actors.Actor
-import scala.actors.Actor._
 
 object AMQChannel {
   val systemChannelId = 0
 }
 
+sealed abstract class ChannelErrors extends QbertError
+case class ChannelDoesNotExist(i: Int) extends ChannelErrors
+
+// The messages an AMQChannel handles
 sealed abstract class ChannelMessage()
-object ChannelMessages {
 case class PublishReceived(info: MessagePublishInfo) extends ChannelMessage()
 case class ContentHeaderReceived(header: ContentHeader) extends ChannelMessage()
 case class ContentBodyReceived(body: ContentBody) extends ChannelMessage()
-case class FrameReceived(f: Frame) extends ChannelMessage
-case class Close() extends ChannelMessage
-}
+case class DeliverMessage(m: AMQMessage) extends ChannelMessage
+case object Close extends ChannelMessage
 
 class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with QueueConsumer with Logging {
-  import ChannelMessages._
-  import QueueMessages._
-
   info("Channel created with id {} ", channelId)
   
   private var partialMessage: Option[PartialMessage] = None
@@ -37,7 +36,8 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   def publishReceived(info: MessagePublishInfo) = this ! PublishReceived(info)
   def publishContentHeader(header: ContentHeader) = this ! ContentHeaderReceived(header)
   def publishContentBody(body: ContentBody) = this ! ContentBodyReceived(body)
-  def close() = this ! Close()
+  def deliverMessage(m: AMQMessage) = this ! DeliverMessage(m)
+  def close() = this ! Close
 
   def act() = loop(mainLoop)
 
@@ -45,7 +45,12 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     case PublishReceived(info) => handlePublishFrame(info)
     case ContentHeaderReceived(header) => handleContentHeader(header)
     case ContentBodyReceived(body) => handleContentBody(body)
-    case Close() => closeChannel()
+    case DeliverMessage(m) => handleMessageDelivery(m)
+    case Close => closeChannel()
+  }
+
+  private def handleMessageDelivery(m: AMQMessage) = {
+    val deliver = session.methodFactory.createBasicDeliver()
   }
 
   private def handleUndeliveredMessage(m: AMQMessage) = {
@@ -74,7 +79,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   }
 
   private def handleContentBody(body: ContentBody) = {
-    info("Channel {} received content body {}", channelId, body)
+    info("Channel {} received content body {}", channelId, new String(body.buffer, "utf-8"))
     partialMessage match {
       case Some(PartialMessage(Some(p), Some(h))) => 
         partialMessage.get.addContent(body) 
@@ -106,7 +111,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
 
   def closeChannel() = {
     //do much much more here
-    println("closing channel")
+    info("Channel {} is closing ... ", channelId)
     exit()
   }
 

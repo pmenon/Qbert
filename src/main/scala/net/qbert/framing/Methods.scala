@@ -57,6 +57,14 @@ object AMQP {
       def mandatory: Boolean
       def immediate: Boolean
     }
+
+    trait Deliver extends Method {
+      def consumerTag: AMQShortString
+      def deliveryTag: AMQShortString
+      def redelivered: Boolean
+      def exchange: AMQShortString
+      def routingKey: AMQShortString
+    }
   }
 
   object Exchange {

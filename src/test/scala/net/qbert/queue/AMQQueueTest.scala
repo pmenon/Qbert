@@ -1,10 +1,8 @@
 package net.qbert.queue
 
 import net.qbert.channel.AMQChannel
-import net.qbert.exchange.{ ExchangeConfiguration, ExchangeTypes }
 import net.qbert.framing.{ BasicProperties, ContentBody, ContentHeader }
 import net.qbert.message.{ AMQMessage, MessagePublishInfo }
-import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
 
@@ -30,6 +28,9 @@ class AMQQueueTest extends Specification with Mockito {
       val m = new AMQMessage(1, info, header, body)
       val res = queue.enqueue(m)
 
+      // stop the queue
+      queue.close()
+
       // dequeue the message from the queue
       //queue.dequeue(m)
 
@@ -50,6 +51,9 @@ class AMQQueueTest extends Specification with Mockito {
 
       host.store.retrieveQueue(persistentQueue) must beSome[AMQQueue].which(_.name.equals("q1"))
       host.store.retrieveQueue(simpleQueue) must beNone
+
+      persistentQueue.close()
+      simpleQueue.close()
     }
 
     "notify subscribers on enqueue" in {
@@ -88,6 +92,13 @@ class AMQQueueTest extends Specification with Mockito {
       there was one(channel1).onEnqueue(any)
       there was one(channel2).onEnqueue(any)
       there was no(channel3).onEnqueue(any)
+
+      // stop the queue and channels
+      queue.close()
+      channel1.close()
+      channel2.close()
+      channel3.close()
+
     }
 
     "should notify the acting channel if a message is underliverable" in {
@@ -113,6 +124,9 @@ class AMQQueueTest extends Specification with Mockito {
       // the queue should return true since it delivered the message to the sole subscription/channel
       simpleQueue.enqueueAndWait(m).apply().delivered must beTrue
 
+      // stop the queue
+      simpleQueue.close()
+      channel.close()
     }
   }
 

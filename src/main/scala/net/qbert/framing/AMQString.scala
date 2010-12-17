@@ -21,6 +21,7 @@ class AMQShortString(val s: String) extends AMQType {
     fw.writeBytes(bytes)
   }
   def get() = s
+  override def toString() = s
 }
 
 object AMQLongString extends CanReadFrom[AMQLongString] {
@@ -42,4 +43,5 @@ class AMQLongString(val longString: Array[Byte]) extends AMQType {
     fw.writeBytes(longString)
   }
   def get() = new String(longString, "utf-8")
+  override def toString() = new String(longString, "utf-8")
 }

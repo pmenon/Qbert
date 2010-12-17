@@ -1,74 +1,84 @@
 package net.qbert.protocol
 
 import net.qbert.connection.{ AMQConnection, ConnectionState, AwaitingConnectionStartOk, AwaitingConnectionTuneOk, AwaitingConnectionOpen, Opened, Stopped }
-import net.qbert.framing.{ AMQDataBlock, ContentHeader, ContentBody, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method, MethodFactory }
-import net.qbert.handler.{MethodError, MethodHandler}
+import net.qbert.framing.{ AMQP, AMQDataBlock, ContentHeader, ContentBody, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method }
+import net.qbert.handler.{MethodError, UnexpectedMethod, MethodHandler, MethodErrorResponse, MethodSuccessResponse, NoResponseMethodSuccess}
 import net.qbert.logging.Logging
 import net.qbert.state.StateMachine
 
-class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with Logging {
+class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with StateMachine[ConnectionState, Frame] with Logging {
   
   var methodHandler: MethodHandler = null
-  val connectionStateMachine = new ConnectionStateMachine
-  var frameDispatcher: Function1[Frame, Unit] = dispatchToConnectionStateMachine
 
-  def dispatchToConnectionStateMachine(f: Frame) = {
-    connectionStateMachine.actOn(f.payload.asInstanceOf[Method])
-  }
-
-  def dispatchToHandler(f: Frame) = {
-    f.typeId match {
-      case Frame.FRAME_METHOD => methodReceived(f.channelId, f.payload.asInstanceOf[Method])
-      case Frame.FRAME_CONTENT => contentHeaderReceived(f.channelId, f.payload.asInstanceOf[ContentHeader])
-      case Frame.FRAME_BODY => contentBodyReceived(f.channelId, f.payload.asInstanceOf[ContentBody])
+  // State transitions for an AMQ connection
+  when(AwaitingConnectionStartOk){ (frame) => frame.payload match {
+    case startOk : AMQP.Connection.StartOk => methodHandler.handleConnectionStartOk(0, startOk) match {
+      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
+      case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionTuneOk)
+      case NoResponseMethodSuccess => goTo(AwaitingConnectionTuneOk)
     }
-  }
+    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+  }}
 
-  class ConnectionStateMachine extends StateMachine[ConnectionState, Method] {
-    def handleWithSuccess(method: Method, successState: ConnectionState) = {
-      methodHandler.handleMethod(0, method) match {
-        case Left(error) => handleError(error)
-        case Right(res) => handleResponse(res); println("moving to " + successState); goTo(successState)
+  when(AwaitingConnectionTuneOk){ (frame) => frame.payload match {
+    case tuneOk : AMQP.Connection.TuneOk => methodHandler.handleConnectionTuneOk(0, tuneOk) match {
+      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
+      case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionOpen)
+      case NoResponseMethodSuccess => goTo(AwaitingConnectionOpen)
+    }
+    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+  }}
+
+  when(AwaitingConnectionOpen){ (frame) => frame.payload match {
+    case open: AMQP.Connection.Open => methodHandler.handleConnectionOpen(0, open) match {
+      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
+      case MethodSuccessResponse(res) => handleResponse(res); goTo(Opened)
+      case NoResponseMethodSuccess => goTo(Opened)
+    }
+    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+  }}
+
+  when(Opened){ (frame) => frame.payload.typeId match {
+    case Frame.FRAME_METHOD =>
+      methodReceived(frame.channelId, frame.payload.asInstanceOf[Method]) match {
+        case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
+        case MethodSuccessResponse(res) => handleResponse(res); stay
+        case NoResponseMethodSuccess => stay
       }
-    }
+    case Frame.FRAME_CONTENT => contentHeaderReceived(frame.channelId, frame.payload.asInstanceOf[ContentHeader]); stay
+    case Frame.FRAME_BODY => contentBodyReceived(frame.channelId, frame.payload.asInstanceOf[ContentBody]); stay
+  }}
 
-    when(AwaitingConnectionStartOk){(method) => handleWithSuccess(method, AwaitingConnectionTuneOk)}
+  // The beginning state
+  setState(AwaitingConnectionStartOk)
 
-    when(AwaitingConnectionTuneOk){ (method) => handleWithSuccess(method, AwaitingConnectionOpen) }
-
-    when(AwaitingConnectionOpen){ (method) => methodHandler.handleMethod(0, method) match {
-      case Left(error) => handleError(error)
-      case Right(res) => handleResponse(res); openConnection(); goTo(Opened)
-    }}
-
-    setState(AwaitingConnectionStartOk)
-  }
-
+  // This method indicates an error and should close the connection
   def handleError(e: MethodError) = {
     println("ERROR: " + e)
-    Stopped
   }
 
-  def handleResponse(frame: Option[Frame]) = {
-    frame.foreach(conn.writeFrame(_))
+  // This method writes a response frame on the connection
+  def handleResponse(frame: Frame) = {
+    conn.writeFrame(frame)
   }
 
-  def openConnection() = {
-    frameDispatcher = dispatchToHandler
-    println("opened!")
-  }
-
+  /**
+   * Main entry point for data into the driver.  Depending on the type of of data
+   * it either is a protocol initiation or a regular data frame.
+   *
+   * If the data is a regular frame, it goes through the state manager
+   */
   def dataBlockReceived(datablock: AMQDataBlock) = {
     datablock match {
       case pi: ProtocolInitiation => protocolInitiation(pi)
-      case frame: Frame => frameDispatcher(frame)
+      case frame: Frame => actOn(frame)//connectionStateMachine.actOn(frame)
       case _ => error("unknown frame object received")
     }
   }
 
   override def init(version: ProtocolVersion) = {
     super.init(version)
-    methodHandler = MethodHandler(this, connectionStateMachine)
+    methodHandler = MethodHandler(this)//, connectionStateMachine)
   }
     
   def versionOk(major: Int, minor: Int) = true
@@ -85,24 +95,19 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
     }
     
     conn writeFrame response
-
-
   }
 
   def methodReceived(channelId: Int, method: Method) = {
     info("Method received : {}", method)
-    methodHandler.handleMethod(channelId, method) match {
-      case Left(error) => handleError(error)
-      case Right(res) => handleResponse(res)
-    }
+    methodHandler.handleMethod(channelId, method)
   }
 
   def contentHeaderReceived(channelId: Int, header: ContentHeader) = {
     info("Content header received : {}", header)
-    getChannel(channelId).map( (channel) => 
+    getChannel(channelId).map( (channel) =>
       channel.publishContentHeader(header)
     ).orElse(error("Channel " + channelId + " does not exist"))
-  } 
+  }
 
   def contentBodyReceived(channelId: Int, body: ContentBody) = {
     info("Content body received : {} ", body)
@@ -110,6 +115,5 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
       channel.publishContentBody(body)
     ).orElse(error("Channel " + channelId + " does not exist"))
   }
-
 
 }

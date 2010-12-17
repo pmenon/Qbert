@@ -3,7 +3,8 @@ import sbt._
 class QbertProjectDefinition(info: ProjectInfo) extends DefaultProject(info) {
   val jbossRepository = "JBoss Public Maven 2 Repository" at "http://repository.jboss.org/nexus/content/groups/public/"
 
-  val amqpClient = "org.rabbitmq" % "amqp-client" % "2.1.1"
+  val amqpClient = "com.rabbitmq" % "amqp-client" % "2.2.0"
+  val commonsIO = "commons-io" % "commons-io" % "2.0"
   val netty = "org.jboss.netty" % "netty" % "3.2.2.Final"
   val slf4japi = "org.slf4j" % "slf4j-api" % "1.6.1"
   val slf4jsimple = "org.slf4j" % "slf4j-simple" % "1.6.1"

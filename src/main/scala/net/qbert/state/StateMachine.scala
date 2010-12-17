@@ -25,6 +25,8 @@ trait StateMachine[S, I] {
 
   def goTo(state: S) = state
 
+  def stay = currentState
+
   def setState(nextState: S) = currentState = nextState
 
   def inState(otherState: S): Boolean = currentState == otherState

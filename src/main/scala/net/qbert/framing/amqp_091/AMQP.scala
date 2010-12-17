@@ -233,7 +233,10 @@ object AMQP_091 {
 
   }
 
+  // Basic
   object Basic {
+
+    // Basic.Publish
     object Publish extends CanReadFrom[Publish] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = {
@@ -260,6 +263,36 @@ object AMQP_091 {
       }
 
       override def toString() = "#Basic.Publish<exchange="+exchangeName+",routingKey="+routingKey+">"
+    }
+
+    // Basic.Deliver
+    object Deliver extends CanReadFrom[Deliver] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def apply(consumerTag: AMQShortString, deliveryTag: AMQShortString, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString): Deliver = {
+        var bitField = 0
+        if(redelivered) bitField |= (1 << 0)
+        Deliver(consumerTag, deliveryTag, bitField.asInstanceOf[Byte], exchange, routingKey)
+      }
+      def readFrom(fr: FrameReader) = new Deliver(fr.readShortString, fr.readShortString, fr.readOctet, fr.readShortString, fr.readShortString)
+    }
+
+    private[AMQP_091] case class Deliver(consumerTag: AMQShortString, deliveryTag: AMQShortString, bitField: Byte, exchange: AMQShortString, routingKey: AMQShortString) extends AMQP.Basic.Deliver {
+      val classId = 60
+      val methodId = 60
+
+      def redelivered = (bitField & (1 << 0)) != 0
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicDeliver(channelId, this)
+
+      def argSize = consumerTag.size + deliveryTag.size + 1 + exchange.size + routingKey.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShortString(consumerTag)
+        fw.writeShortString(deliveryTag)
+        fw.writeOctet(bitField)
+        fw.writeShortString(exchange)
+        fw.writeShortString(routingKey)
+      }
     }
   }
 
@@ -408,6 +441,7 @@ object AMQP_091 {
 
       def writeArguments(fw: FrameWriter) = {}
     }
+
   }
 
 

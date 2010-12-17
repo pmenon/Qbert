@@ -1,9 +1,7 @@
 package net.qbert.virtualhost
 
-import net.qbert.exchange.{ AMQExchange, ExchangeRegistry }
 import net.qbert.util.Registry
-
-import net.qbert.store.{ Store, MemoryStore }
+import net.qbert.store.MemoryStore
 import net.qbert.queue.{QueueConfiguration, QueueManager, AMQQueue}
 import net.qbert.exchange.{ ExchangeConfiguration, ExchangeTypes, ExchangeManager }
 
@@ -17,7 +15,7 @@ object AMQVirtualHost {
 
 class AMQVirtualHost(val name: String) extends QueueManager with ExchangeManager {
   //val store = new Store{}
-  val store = new MemoryStore
+  val store = new MemoryStore()
 
   // default exchanges
   createExchange(ExchangeConfiguration("amq.direct", ExchangeTypes.DIRECT, false, false, false))

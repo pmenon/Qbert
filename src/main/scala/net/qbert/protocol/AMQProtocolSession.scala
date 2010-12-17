@@ -3,6 +3,7 @@ package net.qbert.protocol
 import net.qbert.channel.ChannelManager
 import net.qbert.connection.AMQConnection
 import net.qbert.framing.{ ContentBody, ContentHeader, Frame, Method, MethodFactory }
+import net.qbert.handler.MethodHandlerResponse
 import net.qbert.virtualhost.AMQVirtualHost
 
 trait AMQProtocolSession extends ChannelManager {
@@ -23,7 +24,7 @@ trait AMQProtocolSession extends ChannelManager {
     methodFactory = MethodFactory.createWithVersion(protocolVersion)
   }
 
-  def methodReceived(channelId: Int, method: Method): Unit
+  def methodReceived(channelId: Int, method: Method): MethodHandlerResponse
   def contentHeaderReceived(channelId: Int, header: ContentHeader): Unit
   def contentBodyReceived(channelId: Int, body: ContentBody): Unit
 }

@@ -16,7 +16,7 @@ class AMQMessageReference(val m: AMQMessage) {
   def incrementCount() = synchronized {
     refCount += 1
   }
-  def decrementCout() = synchronized {
+  def decrementCount() = synchronized {
     refCount -= 1
   }
 }
