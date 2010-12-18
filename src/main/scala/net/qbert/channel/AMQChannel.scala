@@ -1,6 +1,6 @@
 package net.qbert.channel
 
-import net.qbert.QbertError
+import net.qbert.error.QbertError
 import net.qbert.framing.{ ContentBody, ContentHeader, Frame }
 import net.qbert.logging.Logging
 import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
