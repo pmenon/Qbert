@@ -6,8 +6,10 @@ import net.qbert.logging.Logging
 import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.queue.{ AMQQueue, QueueEntry, QueueConsumer }
+import net.qbert.subscription.Subscription
 
 import scala.actors.Actor
+import scala.collection.mutable
 
 object AMQChannel {
   val systemChannelId = 0
@@ -22,11 +24,14 @@ case class PublishReceived(info: MessagePublishInfo) extends ChannelMessage()
 case class ContentHeaderReceived(header: ContentHeader) extends ChannelMessage()
 case class ContentBodyReceived(body: ContentBody) extends ChannelMessage()
 case class DeliverMessage(m: AMQMessage) extends ChannelMessage
-case object Close extends ChannelMessage
+case class SubscriptionRequest(consumerTag: String, q: AMQQueue) extends ChannelMessage
+case object StopChannel extends ChannelMessage
 
 class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with QueueConsumer with Logging {
   info("Channel created with id {} ", channelId)
-  
+
+  private var deliveryTag: Long = 0
+  private val subscriptions = mutable.Map[String, Subscription]()
   private var partialMessage: Option[PartialMessage] = None
   
   // start as soon as we instantiate
@@ -36,8 +41,9 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   def publishReceived(info: MessagePublishInfo) = this ! PublishReceived(info)
   def publishContentHeader(header: ContentHeader) = this ! ContentHeaderReceived(header)
   def publishContentBody(body: ContentBody) = this ! ContentBodyReceived(body)
-  def deliverMessage(m: AMQMessage) = this ! DeliverMessage(m)
-  def close() = this ! Close
+  def deliverMessage(s: Subscription, m: AMQMessage) = this ! DeliverMessage(m)
+  def subscribeToQueue(consumerTag: String, q: AMQQueue) = this ! SubscriptionRequest(consumerTag, q)
+  def stop() = this ! StopChannel
 
   def act() = loop(mainLoop)
 
@@ -46,11 +52,23 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     case ContentHeaderReceived(header) => handleContentHeader(header)
     case ContentBodyReceived(body) => handleContentBody(body)
     case DeliverMessage(m) => handleMessageDelivery(m)
-    case Close => closeChannel()
+    case SubscriptionRequest(tag, q) => handleSubscriptionRequest(tag, q)
+    case StopChannel => stopChannel()
+  }
+
+  private def handleSubscriptionRequest(consumerTag: String, q: AMQQueue) = {
+    subscriptions.get(consumerTag) match {
+      case Some(subscription) => exit()
+      case None =>
+        val subscription = Subscription(consumerTag, this, q)
+        q.addSubscription(subscription)
+        subscriptions(consumerTag) = subscription
+    }
   }
 
   private def handleMessageDelivery(m: AMQMessage) = {
-    val deliver = session.methodFactory.createBasicDeliver()
+    val messageDeliveryTag = deliveryTag + 1
+    //val deliver = session.methodFactory.createBasicDeliver(m.info.)
   }
 
   private def handleUndeliveredMessage(m: AMQMessage) = {
@@ -109,9 +127,9 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
     partialMessage = None
   }
 
-  def closeChannel() = {
+  def stopChannel() = {
     //do much much more here
-    info("Channel {} is closing ... ", channelId)
+    info("Channel {} is stopping ... ", channelId)
     exit()
   }
 

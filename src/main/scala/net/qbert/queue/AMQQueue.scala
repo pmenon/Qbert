@@ -18,8 +18,8 @@ trait AMQQueue {
   def enqueue(message: AMQMessage): Unit
   def enqueueAndWait(message: AMQMessage): Future[QueueMessages.DeliveryResponse]
   def dequeue(entry: QueueEntry): Unit
-  def subscribe(subscription: Subscription): Unit
-  def unsubscribe(subscription: Subscription): Unit
+  def addSubscription(subscription: Subscription): Unit
+  def removeSubscription(subscription: Subscription): Unit
   def close: Unit
 }
 
@@ -41,8 +41,8 @@ trait ActorBasedQueue extends Actor with AMQQueue {
   def enqueue(message: AMQMessage) = this ! EnqueueMessage(message.reference)
   def enqueueAndWait(message: AMQMessage) = (this !! EnqueueMessage(message.reference)).asInstanceOf[Future[DeliveryResponse]]
   def dequeue(entry: QueueEntry) = this ! DequeueMessage(entry)
-  def subscribe(sub: Subscription) = this ! SubscribeMessage(sub)
-  def unsubscribe(sub: Subscription) = this ! UnsubscribeMessage(sub)
+  def addSubscription(sub: Subscription) = this ! SubscribeMessage(sub)
+  def removeSubscription(sub: Subscription) = this ! UnsubscribeMessage(sub)
   def close = this ! StopQueue
 
   def act() = loop(mainLoop)
@@ -122,8 +122,8 @@ trait Exclusive extends BaseQueue {
 }
 
 trait AutoDelete extends BaseQueue {
-  abstract override def unsubscribe(sub: Subscription) = {
-    super.unsubscribe(sub)
+  abstract override def removeSubscription(sub: Subscription) = {
+    super.removeSubscription(sub)
     if(subscribers.length <= 0) delete()
   }
 

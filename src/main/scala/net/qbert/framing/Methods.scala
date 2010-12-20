@@ -50,6 +50,17 @@ object AMQP {
   }
 
   object Basic {
+    trait Consume extends Method {
+      def ticket: Short
+      def queueName: AMQShortString
+      def consumerTag: AMQShortString
+      def noLocal: Boolean
+      def noAck: Boolean
+      def exclusive: Boolean
+      def noWait: Boolean
+      def args: AMQFieldTable
+    }
+
     trait Publish extends Method {
       def ticket: Short
       def exchangeName: AMQShortString

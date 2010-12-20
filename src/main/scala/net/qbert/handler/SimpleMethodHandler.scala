@@ -7,6 +7,7 @@ import net.qbert.framing.{AMQP, AMQLongString, AMQShortString, Method}
 import net.qbert.logging.Logging
 import net.qbert.queue.QueueConfiguration
 import net.qbert.exchange.ExchangeConfiguration
+import net.qbert.subscription.Subscription
 
 
 class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler with Logging {
@@ -91,6 +92,29 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
   }
 
   def handleQueueBind(channelId: Int, bind: AMQP.Queue.Bind) = {
+    /*
+    for {
+      host <- session.virtualHost
+      exchange <- host.lookupExchange(bind.exchangeName.get)
+      queue <- host.lookupQueue(bind.queueName.get)
+    } yeild {
+      exchange.bind(queue, bind.routingKey.get)
+      val res = session.methodFactory.createQueueBindOk()
+      if(!bind.noWait) success(res.generateFrame(channelId)) else success()
+    }
+    */
+
+    session.virtualHost.map( (host) =>
+      host.lookupExchange(bind.exchangeName.get).map( (exchange) =>
+        host.lookupQueue(bind.queueName.get).map{ (queue) =>
+          exchange.bind(queue, bind.routingKey.get)
+          val res = session.methodFactory.createQueueBindOk()
+          if(!bind.noWait) success(res.generateFrame(channelId)) else success()
+        }.getOrElse(error(QueueDoesNotExist(bind.queueName.get)))
+      ).getOrElse(error(ExchangeDoesNotExist(bind.exchangeName.get)))
+    ).getOrElse(error(VirtualHostNotAssigned()))
+
+    /*
     val ex = session.virtualHost.map(_.lookupExchange(bind.exchangeName.get)).getOrElse(None)
     val q = session.virtualHost.map(_.lookupQueue(bind.queueName.get)).getOrElse(None)
 
@@ -104,17 +128,38 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
     }
 
     res
-       
+    */
+  }
+
+  def handleBasicConsume(channelId: Int, consume: AMQP.Basic.Consume) = {
+
     /*
-    ex.map( (exchange) =>
-      q.map( (queue) =>
-        exchange.bind(queue, bind.routingKey.get)
-        val res = session.methodFactory.createQueueBindOk()
-        success(res.generateFrame(channelId))
-      ).getOrElse( error(QueueDoesNotExist(bind.queueName)) )
-    ).getOrElse( error(ExchangeDoesNotExist(bind.exchangeName)) )
+    for {
+      channel <- session.getChannel(channelId)
+      host <- session.virtualHost
+      queue <- host.lookupQueue(consume.queueName.get)
+    } yield {
+      queue.subscribe(Subscription(channel, queue))
+      success()
+    }
     */
 
+    val res = session.getChannel(channelId).map( (channel) =>
+      session.virtualHost.map( (host) =>
+        host.lookupQueue(consume.queueName.get).map{ (queue) =>
+
+          // we return success here and let the channel return an error if any should come up
+          channel.subscribeToQueue(consume.consumerTag.get, queue)
+          success()
+
+        }.getOrElse(error(QueueDoesNotExist(consume.queueName.get)))
+      ).getOrElse(error(VirtualHostNotAssigned()))
+    ).getOrElse(error(ChannelDoesNotExist(channelId)))
+
+    res
+
   }
+
+
 
 }

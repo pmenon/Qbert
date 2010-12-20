@@ -2,7 +2,7 @@ package net.qbert.protocol
 
 import net.qbert.connection.{ AMQConnection, ConnectionState, AwaitingConnectionStartOk, AwaitingConnectionTuneOk, AwaitingConnectionOpen, Opened, Stopped }
 import net.qbert.framing.{ AMQP, AMQDataBlock, ContentHeader, ContentBody, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method }
-import net.qbert.handler.{MethodError, UnexpectedMethod, MethodHandler, MethodErrorResponse, MethodSuccessResponse, NoResponseMethodSuccess}
+import net.qbert.handler.{MethodHandlingError, UnexpectedMethodHandling, MethodHandler, MethodErrorResponse, MethodSuccessResponse, NoResponseMethodSuccess}
 import net.qbert.logging.Logging
 import net.qbert.state.StateMachine
 
@@ -17,7 +17,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
       case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionTuneOk)
       case NoResponseMethodSuccess => goTo(AwaitingConnectionTuneOk)
     }
-    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
   }}
 
   when(AwaitingConnectionTuneOk){ (frame) => frame.payload match {
@@ -26,7 +26,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
       case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionOpen)
       case NoResponseMethodSuccess => goTo(AwaitingConnectionOpen)
     }
-    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
   }}
 
   when(AwaitingConnectionOpen){ (frame) => frame.payload match {
@@ -35,7 +35,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
       case MethodSuccessResponse(res) => handleResponse(res); goTo(Opened)
       case NoResponseMethodSuccess => goTo(Opened)
     }
-    case _ => handleError(UnexpectedMethod("tt")); goTo(Stopped)
+    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
   }}
 
   when(Opened){ (frame) => frame.payload.typeId match {
@@ -53,7 +53,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
   setState(AwaitingConnectionStartOk)
 
   // This method indicates an error and should close the connection
-  def handleError(e: MethodError) = {
+  def handleError(e: MethodHandlingError) = {
     println("ERROR: " + e)
   }
 

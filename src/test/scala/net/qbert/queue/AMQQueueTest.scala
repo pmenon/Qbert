@@ -14,7 +14,7 @@ class AMQQueueTest extends Specification with Mockito {
   "A Queue" should {
     val host = AMQVirtualHost("/")
 
-    "be able to enqueue and dequeue" in {
+    "be able to enqueue" in {
       // create a simple queue
       val queue = QueueFactory.createQueue(QueueConfiguration("q1", host, false, false, false))
 
@@ -30,18 +30,6 @@ class AMQQueueTest extends Specification with Mockito {
 
       // stop the queue
       queue.close()
-
-      // dequeue the message from the queue
-      //queue.dequeue(m)
-
-      //m must beSome[AMQMessage]
-      /*
-      m1.id must ==(1)
-      m1.info.exchangeName must ==("exchange1")
-      m1.info.routingKey must ==("route1")
-      m1.header.bodySize must ==(message.length)
-      m1.body.buffer must ==(message)
-      */
     }
 
     "persist itself if durable" in {

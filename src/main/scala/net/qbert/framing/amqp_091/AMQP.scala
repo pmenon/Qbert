@@ -236,6 +236,36 @@ object AMQP_091 {
   // Basic
   object Basic {
 
+    // Basic.Consume
+    object Consume extends CanReadFrom[Consume] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = {
+        new Consume(fr.readShort, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
+      }
+    }
+
+    private[AMQP_091] case class Consume(ticket: Short, queueName: AMQShortString, consumerTag: AMQShortString, bitField: Byte, args: AMQFieldTable) extends AMQP.Basic.Consume {
+      val classId = 60
+      val methodId = 20
+
+      def noLocal = (bitField & (1 << 0)) != 0
+      def noAck = (bitField & (1 << 1)) != 0
+      def exclusive = (bitField & (1 << 2)) != 0
+      def noWait = (bitField & (1 << 3)) != 0
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicConsume(channelId, this)
+
+      def argSize = 2 + queueName.size + consumerTag.size + 1 + args.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(ticket)
+        fw.writeShortString(queueName)
+        fw.writeShortString(consumerTag)
+        fw.writeOctet(bitField)
+        fw.writeFieldTable(args)
+      }
+    }
+
     // Basic.Publish
     object Publish extends CanReadFrom[Publish] {
       def apply(fr: FrameReader) = readFrom(fr)
@@ -244,7 +274,7 @@ object AMQP_091 {
       }
     }
 
-    private[AMQP_091] case class Publish(val ticket: Short, exchangeName: AMQShortString, routingKey: AMQShortString, bitField: Byte) extends AMQP.Basic.Publish {
+    private[AMQP_091] case class Publish(ticket: Short, exchangeName: AMQShortString, routingKey: AMQShortString, bitField: Byte) extends AMQP.Basic.Publish {
       val classId = 60
       val methodId = 40
 
