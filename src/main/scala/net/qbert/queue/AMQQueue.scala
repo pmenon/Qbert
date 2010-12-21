@@ -71,7 +71,7 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
   val subscribers = mutable.ArrayBuffer[Subscription]()
 
   def handleEnqueue(m: AMQMessageReference): Boolean = {
-    info("Queue {} received a message: {}", name, new String(m.m.body.buffer, "utf-8"))
+    logInfo("Queue {} received a message: {}", name, new String(m.m.body.buffer, "utf-8"))
     val entry = QueueEntry(m)
     // we can notify if we have subscribers and one accepts the message
     val canNotify = subscribers.length != 0 && notifySubscribers(entry)
@@ -85,11 +85,11 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
   def handleSubscribe(subscription: Subscription): Unit = subscribers += subscription
   def handleUnsubscribe(subscription: Subscription): Unit = subscribers -= subscription
 
-  def canBeDelivered(entry: QueueEntry, sub: Subscription) = sub.consumer.onEnqueue(entry)
+  def canBeDelivered(entry: QueueEntry, sub: Subscription) = sub.consumer.onEnqueue(sub.consumerTag, entry)
   def notifySubscribers(entry: QueueEntry) = (subscribers.takeWhile(!canBeDelivered(entry, _)).length) != subscribers.length
 
   def handleStopQueue() = {
-    info("Queue {} is stopping ...", name)
+    logInfo("Queue {} is stopping ...", name)
     exit()
   }
 }

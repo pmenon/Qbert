@@ -57,35 +57,35 @@ class AMQQueueTest extends Specification with Mockito {
       val channel2 = mock[AMQChannel]
       val channel3 = mock[AMQChannel]
       val queue = QueueFactory.createQueue(QueueConfiguration("q1", host, true, true, true))
-      val sub1 = Subscription(channel1, queue)
-      val sub2 = Subscription(channel2, queue)
-      val sub3 = Subscription(channel3, queue)
+      val sub1 = Subscription("tag1", channel1, queue)
+      val sub2 = Subscription("tag2", channel2, queue)
+      val sub3 = Subscription("tag3", channel3, queue)
 
       // channel1 always fails
-      channel1.onEnqueue(any) returns false
+      channel1.onEnqueue(any, any) returns false
       // channel2 succeeds
-      channel2.onEnqueue(any) returns true
+      channel2.onEnqueue(any, any) returns true
       // channel3 always fails
-      channel3.onEnqueue(any) returns false
+      channel3.onEnqueue(any, any) returns false
 
       // subscribe all channels
-      queue.subscribe(sub1)
-      queue.subscribe(sub2)
-      queue.subscribe(sub3)
+      queue.addSubscription(sub1)
+      queue.addSubscription(sub2)
+      queue.addSubscription(sub3)
       
       // enqueue the message
       queue.enqueue(m)
 
       // expect each channel except #3 to get one call
-      there was one(channel1).onEnqueue(any)
-      there was one(channel2).onEnqueue(any)
-      there was no(channel3).onEnqueue(any)
+      there was one(channel1).onEnqueue(any, any)
+      there was one(channel2).onEnqueue(any, any)
+      there was no(channel3).onEnqueue(any, any)
 
       // stop the queue and channels
       queue.close()
-      channel1.close()
-      channel2.close()
-      channel3.close()
+      channel1.stop()
+      channel2.stop()
+      channel3.stop()
 
     }
 
@@ -105,16 +105,16 @@ class AMQQueueTest extends Specification with Mockito {
 
       // create a mock channel that accepts any message
       val channel = mock[AMQChannel]
-      channel.onEnqueue(any) returns true
+      channel.onEnqueue(any, any) returns true
 
-      simpleQueue.subscribe(Subscription(channel, simpleQueue))
+      simpleQueue.addSubscription(Subscription("tag1", channel, simpleQueue))
 
       // the queue should return true since it delivered the message to the sole subscription/channel
       simpleQueue.enqueueAndWait(m).apply().delivered must beTrue
 
       // stop the queue
       simpleQueue.close()
-      channel.close()
+      channel.stop()
     }
   }
 

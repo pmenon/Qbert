@@ -11,12 +11,12 @@ class NettyDelegatingHandler extends SimpleChannelHandler with Logging {
   var protocolDriver: AMQProtocolDriver = null
 
   final override def channelConnected(c: ChannelHandlerContext, e: ChannelStateEvent) = {
-    debug("Channel connected ...")
+    logDebug("Channel connected ...")
     protocolDriver = new AMQProtocolDriver(new AMQConnection(new NettyChannel(e.getChannel)))
   }
 
   final override def messageReceived(c: ChannelHandlerContext, m: MessageEvent) = {
-    debug("Message received ...")
+    logDebug("Message received ...")
     m getMessage match {
       case dataBlock: AMQDataBlock => protocolDriver dataBlockReceived dataBlock
       case _ => error("Unknown message received ...")

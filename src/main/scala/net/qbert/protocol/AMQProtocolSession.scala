@@ -24,6 +24,11 @@ trait AMQProtocolSession extends ChannelManager {
     methodFactory = MethodFactory.createWithVersion(protocolVersion)
   }
 
+  def closeConnection(channelId: Int, errorCode: Int, errorString: String) = {
+    val method = methodFactory.createConnectionClose(errorCode, errorString, 0, 0)
+    writeFrame(method.generateFrame(channelId))
+  }
+
   def methodReceived(channelId: Int, method: Method): MethodHandlerResponse
   def contentHeaderReceived(channelId: Int, header: ContentHeader): Unit
   def contentBodyReceived(channelId: Int, body: ContentBody): Unit

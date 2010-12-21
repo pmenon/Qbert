@@ -38,6 +38,13 @@ object AMQP {
     trait OpenOk extends Method {
       def knownHosts: AMQShortString
     }
+
+    trait Close extends Method {
+      def replyCode: Int
+      def replyText: AMQShortString
+      def errClassId: Int
+      def errMethodId: Int
+    }
   }
   object Channel {
     trait Open extends Method {
@@ -61,6 +68,10 @@ object AMQP {
       def args: AMQFieldTable
     }
 
+    trait ConsumeOk extends Method {
+      def consumerTag: AMQShortString
+    }
+
     trait Publish extends Method {
       def ticket: Short
       def exchangeName: AMQShortString
@@ -71,7 +82,7 @@ object AMQP {
 
     trait Deliver extends Method {
       def consumerTag: AMQShortString
-      def deliveryTag: AMQShortString
+      def deliveryTag: Long
       def redelivered: Boolean
       def exchange: AMQShortString
       def routingKey: AMQShortString

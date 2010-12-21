@@ -22,6 +22,10 @@ class MethodFactory_081 extends MethodFactory with Logging {
     Connection.OpenOk(knownHosts)
   }
 
+  def createConnectionClose(replyCode: Int, replyText: AMQShortString, errClassId: Int, errMethodId: Int) = {
+    Connection.Close(replyCode, replyText, errClassId, errMethodId)
+  }
+
   def createChannelOpenOk(channelId: AMQLongString) = {
     Channel.OpenOk(channelId)
   }
@@ -38,7 +42,11 @@ class MethodFactory_081 extends MethodFactory with Logging {
     Queue.BindOk()
   }
 
-  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: AMQShortString, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
+  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: Long, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
     Basic.Deliver(consumerTag, deliveryTag, redelivered, exchange, routingKey)
+  }
+
+  def createBasicConsumeOk(consumerTag: AMQShortString) = {
+    Basic.ConsumeOk(consumerTag)
   }
 }

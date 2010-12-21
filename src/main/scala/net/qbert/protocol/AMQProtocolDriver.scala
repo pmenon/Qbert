@@ -84,7 +84,7 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
   def versionOk(major: Int, minor: Int) = true
 
   def protocolInitiation(pi: ProtocolInitiation) = {
-    info("Protocol Initiation Received ... {}", pi)
+    logInfo("Protocol Initiation Received ... {}", pi)
     
     val response = if (versionOk(pi.major, pi.minor)) {
       init(ProtocolVersion(pi.major, pi.minor))
@@ -98,19 +98,19 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
   }
 
   def methodReceived(channelId: Int, method: Method) = {
-    info("Method received : {}", method)
+    logInfo("Method received : {}", method)
     methodHandler.handleMethod(channelId, method)
   }
 
   def contentHeaderReceived(channelId: Int, header: ContentHeader) = {
-    info("Content header received : {}", header)
+    logInfo("Content header received : {}", header)
     getChannel(channelId).map( (channel) =>
       channel.publishContentHeader(header)
     ).orElse(error("Channel " + channelId + " does not exist"))
   }
 
   def contentBodyReceived(channelId: Int, body: ContentBody) = {
-    info("Content body received : {} ", body)
+    logInfo("Content body received : {} ", body)
     getChannel(channelId).map( (channel) =>
       channel.publishContentBody(body)
     ).orElse(error("Channel " + channelId + " does not exist"))

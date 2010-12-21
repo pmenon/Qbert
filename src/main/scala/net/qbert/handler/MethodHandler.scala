@@ -38,6 +38,7 @@ trait MethodHandler {
   def handleConnectionTuneOk(channelId: Int, tuneOk: AMQP.Connection.TuneOk): MethodHandlerResponse
   def handleConnectionOpen(channelId: Int, connOpen: AMQP.Connection.Open): MethodHandlerResponse
   def handleConnectionOpenOk(channelId: Int, connOpenOk: AMQP.Connection.OpenOk) = error(UnsupportedMethodHandling("Connection.OpenOk"))
+  def handleConnectionClose(channelId: Int, close: AMQP.Connection.Close): MethodHandlerResponse
 
   // Channel
   def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open): MethodHandlerResponse
@@ -57,6 +58,7 @@ trait MethodHandler {
   def handleBasicPublish(channelId: Int, publish: AMQP.Basic.Publish): MethodHandlerResponse
   def handleBasicDeliver(channelId: Int, deliver: AMQP.Basic.Deliver) = error(UnsupportedMethodHandling("Basic.Deliver"))
   def handleBasicConsume(channelId: Int, consume: AMQP.Basic.Consume): MethodHandlerResponse
+  def handleBasicConsumeOk(channelId: Int, consumeOk: AMQP.Basic.ConsumeOk) = error(UnsupportedMethodHandling("Basic.Deliver"))
 
 
   protected def success(): MethodHandlerResponse = NoResponseMethodSuccess

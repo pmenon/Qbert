@@ -31,9 +31,10 @@ class MethodFactory_091 extends MethodFactory with Logging {
       case (50, 20) => Some(Queue.Bind(fr))
       case (50, 21) => Some(Queue.BindOk(fr))
 
+      case (60, 20) => Some(Basic.Consume(fr))
       case (60, 40) => Some(Basic.Publish(fr))
 
-      case _ => info("No method matches classId={} methodId={}", classId, methodId); None
+      case _ => logInfo("No method matches classId={} methodId={}", classId, methodId); None
     }
 
     method
@@ -49,6 +50,10 @@ class MethodFactory_091 extends MethodFactory with Logging {
 
   def createConnectionOpenOk(knownHosts: AMQShortString) = {
     Connection.OpenOk(knownHosts)
+  }
+
+  def createConnectionClose(replyCode: Int, replyText: AMQShortString, errClassId: Int, errMethodId: Int) = {
+    Connection.Close(replyCode, replyText, errClassId, errMethodId)
   }
 
   def createChannelOpenOk(channelId: AMQLongString) = {
@@ -67,8 +72,12 @@ class MethodFactory_091 extends MethodFactory with Logging {
     Queue.BindOk()
   }
 
-  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: AMQShortString, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
+  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: Long, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
     Basic.Deliver(consumerTag, deliveryTag, redelivered, exchange, routingKey)
+  }
+
+  def createBasicConsumeOk(consumerTag: AMQShortString) = {
+    Basic.ConsumeOk(consumerTag)
   }
 
 }

@@ -169,7 +169,30 @@ object AMQP_091 {
       }
 
       override def toString() = "#Connection.Open<virtualHost="+knownHosts+">"
+    }
 
+    // Connection.Close
+    object Close extends CanReadFrom[Close] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = {
+        new Close(fr.readShort, fr.readShortString, fr.readShort, fr.readShort)
+      }
+    }
+
+    private [AMQP_091] case class Close(replyCode: Int, replyText: AMQShortString, errClassId: Int, errMethodId: Int) extends AMQP.Connection.Close {
+      val classId = 10
+      val methodId = 40
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleConnectionClose(channelId, this)
+
+      def argSize = 2 + replyText.size + 2 + 2
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShort(replyCode)
+        fw.writeShortString(replyText)
+        fw.writeShort(errClassId)
+        fw.writeShort(errMethodId)
+      }
     }
     
   }
@@ -266,6 +289,27 @@ object AMQP_091 {
       }
     }
 
+    // Basic.ConsumeOk
+    object ConsumeOk extends CanReadFrom[ConsumeOk] {
+      def apply(fr: FrameReader) = readFrom(fr)
+      def readFrom(fr: FrameReader) = {
+        new ConsumeOk(fr.readShortString)
+      }
+    }
+
+    private[AMQP_091] case class ConsumeOk(consumerTag: AMQShortString) extends AMQP.Basic.ConsumeOk {
+      val classId = 60
+      val methodId = 21
+
+      def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicConsumeOk(channelId, this)
+
+      def argSize = consumerTag.size
+
+      def writeArguments(fw: FrameWriter) = {
+        fw.writeShortString(consumerTag)
+      }
+    }
+
     // Basic.Publish
     object Publish extends CanReadFrom[Publish] {
       def apply(fr: FrameReader) = readFrom(fr)
@@ -298,15 +342,15 @@ object AMQP_091 {
     // Basic.Deliver
     object Deliver extends CanReadFrom[Deliver] {
       def apply(fr: FrameReader) = readFrom(fr)
-      def apply(consumerTag: AMQShortString, deliveryTag: AMQShortString, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString): Deliver = {
+      def apply(consumerTag: AMQShortString, deliveryTag: Long, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
         var bitField = 0
         if(redelivered) bitField |= (1 << 0)
-        Deliver(consumerTag, deliveryTag, bitField.asInstanceOf[Byte], exchange, routingKey)
+        new Deliver(consumerTag, deliveryTag, bitField.asInstanceOf[Byte], exchange, routingKey)
       }
-      def readFrom(fr: FrameReader) = new Deliver(fr.readShortString, fr.readShortString, fr.readOctet, fr.readShortString, fr.readShortString)
+      def readFrom(fr: FrameReader) = new Deliver(fr.readShortString, fr.readLongLong, fr.readOctet, fr.readShortString, fr.readShortString)
     }
 
-    private[AMQP_091] case class Deliver(consumerTag: AMQShortString, deliveryTag: AMQShortString, bitField: Byte, exchange: AMQShortString, routingKey: AMQShortString) extends AMQP.Basic.Deliver {
+    private[AMQP_091] case class Deliver(consumerTag: AMQShortString, deliveryTag: Long, bitField: Byte, exchange: AMQShortString, routingKey: AMQShortString) extends AMQP.Basic.Deliver {
       val classId = 60
       val methodId = 60
 
@@ -314,11 +358,11 @@ object AMQP_091 {
 
       def handle(channelId: Int, methodHandler: MethodHandler) = methodHandler.handleBasicDeliver(channelId, this)
 
-      def argSize = consumerTag.size + deliveryTag.size + 1 + exchange.size + routingKey.size
+      def argSize = consumerTag.size + 8 + 1 + exchange.size + routingKey.size
 
       def writeArguments(fw: FrameWriter) = {
         fw.writeShortString(consumerTag)
-        fw.writeShortString(deliveryTag)
+        fw.writeLongLong(deliveryTag)
         fw.writeOctet(bitField)
         fw.writeShortString(exchange)
         fw.writeShortString(routingKey)

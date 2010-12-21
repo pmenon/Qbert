@@ -21,7 +21,7 @@ class ChannelTest extends Specification with Mockito {
       
     }
     */
-    channel.close()
+    channel.stop
   }
 
 }

@@ -21,9 +21,11 @@ trait MethodFactory extends CanReadFrom[Option[Method]] {
   def createConnectionStart(version: ProtocolVersion, props: AMQFieldTable, mechanisms: AMQLongString, locales: AMQLongString): AMQP.Connection.Start
   def createConnectionTune(channelMax: Short, frameMax: Int, heartbeat: Short): AMQP.Connection.Tune
   def createConnectionOpenOk(knownHosts: AMQShortString): AMQP.Connection.OpenOk
+  def createConnectionClose(replyCode: Int, replyText: AMQShortString, classId: Int, methodId: Int): AMQP.Connection.Close
   def createChannelOpenOk(channelId: AMQLongString): AMQP.Channel.OpenOk
   def createExchangeDeclareOk(): AMQP.Exchange.DeclareOk
   def createQueueDeclareOk(queueName: AMQShortString, messageCount: Int, consumerCount: Int): AMQP.Queue.DeclareOk
   def createQueueBindOk(): AMQP.Queue.BindOk
-  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: AMQShortString, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString): AMQP.Basic.Deliver
+  def createBasicDeliver(consumerTag: AMQShortString, deliveryTag: Long, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString): AMQP.Basic.Deliver
+  def createBasicConsumeOk(consumerTag: AMQShortString): AMQP.Basic.ConsumeOk
 }

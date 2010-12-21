@@ -6,6 +6,11 @@ import com.rabbitmq.client.QueueingConsumer
 class QbertNetworkTest extends Specification {
 
   class ConsumingThread(queueName: String) extends Thread {
+    private var going = true
+
+    def stopConsuming() = {
+      going = false
+    }
 
     override def run = {
       val cf1 = new ConnectionFactory
@@ -16,9 +21,12 @@ class QbertNetworkTest extends Specification {
       val c1 = cf1.newConnection()
       val ch1 = c1.createChannel
       val consumer1 = new QueueingConsumer(ch1)
-      ch1.basicConsume(queueName, true, consumer1)
+      val tag = ch1.basicConsume(queueName, true, consumer1)
 
-      println(new String(consumer1.nextDelivery().getBody(), "utf-8"))
+      while(going) {
+        //println("---------- " + tag + " ---------------  " + new String(consumer1.nextDelivery().getBody(), "utf-8"))
+        consumer1.nextDelivery()
+      }
     }
   }
 
@@ -26,7 +34,7 @@ class QbertNetworkTest extends Specification {
   "Simple Qbert connection" should {
     "succeed protocol negotiation" in {
       
-      Qbert.main(Array())
+      //Qbert.main(Array())
 
       val cf = new ConnectionFactory
       cf.setHost("localhost")
@@ -46,13 +54,24 @@ class QbertNetworkTest extends Specification {
       ch.queueBind("queue2", "exchange1", "route2")
 
 
-      //new ConsumingThread("queue1").start()
-      //Thread.sleep(1000)
+      val th1 = new ConsumingThread("queue1")
+      th1.start()
+      Thread.sleep(1000)
 
       //ch.txSelect
+      val t1 = System.currentTimeMillis
+      for(i <- 1 to 100000) {
       ch.basicPublish("exchange1", "route1", null, "Hello, world1!".getBytes("utf-8"))
-      ch.basicPublish("exchange1", "route2", true, true, null, "Hello, world2!".getBytes("utf-8"))
+      //ch.basicPublish("exchange1", "route2", true, true, null, "Hello, world2!".getBytes("utf-8"))
       //ch.txCommit()
+      }
+      val t2 = System.currentTimeMillis
+
+      Thread.sleep(10000)
+
+      th1.stopConsuming()
+
+      println("\n\n TPS = " + 100000/((t2-t1)/1000) + "\n\n")
 
     }
   }

@@ -7,15 +7,16 @@ import net.qbert.framing.{AMQP, AMQLongString, AMQShortString, Method}
 import net.qbert.logging.Logging
 import net.qbert.queue.QueueConfiguration
 import net.qbert.exchange.ExchangeConfiguration
-import net.qbert.subscription.Subscription
+import net.qbert.error.AMQPError
 
 
 class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler with Logging {
+  lazy implicit val noOp = () => {}
 
   def handleMethod(channelId: Int, method: Method) = method.handle(channelId, this)
 
   def handleConnectionStartOk(channelId: Int, startOk: AMQP.Connection.StartOk) = {
-    info("Connection.Start received: " + startOk)
+    logInfo("Connection.Start received: " + startOk)
 
     val tuneMessage = session.methodFactory.createConnectionTune(100,100,100)
     val response = tuneMessage.generateFrame(0)
@@ -25,13 +26,13 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
 
 
   def handleConnectionTuneOk(channelId: Int, tuneOk: AMQP.Connection.TuneOk) = {
-    info("Connection.TuneOk received: " + tuneOk)
+    logInfo("Connection.TuneOk received: " + tuneOk)
     // do nothing ... for now
     success()
   }
 
   def handleConnectionOpen(channelId: Int, connOpen: AMQP.Connection.Open) = {
-    info("Connection.Open received: " + connOpen)
+    logInfo("Connection.Open received: " + connOpen)
 
     val res = VirtualHostRegistry.get(connOpen.virtualHost.get).map{(host) =>
       session.virtualHost = Some(host)
@@ -40,11 +41,14 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
     }.getOrElse(error(UnknownVirtualHost(connOpen.virtualHost.get)))
 
     res
+  }
 
+  def handleConnectionClose(channelId: Int, close: AMQP.Connection.Close) = {
+    success()
   }
 
   def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open) = {
-    info("Channel.Open received: " + channelOpen)
+    logInfo("Channel.Open received: " + channelOpen)
 
     val c = session.createChannel(channelId)
     val openok = session.methodFactory.createChannelOpenOk(AMQLongString("channel-"+c.channelId.toString))
@@ -59,7 +63,7 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
                                          publish.mandatory,
                                          publish.immediate)
     session.getChannel(channelId).map{_.publishReceived(publishInfo)}.getOrElse {
-      info("Channel {} does not exist during basic.publish attempt")
+      logInfo("Channel {} does not exist during basic.publish attempt")
       //error("Channel doesn't not exist")
     }
     success()
@@ -92,17 +96,6 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
   }
 
   def handleQueueBind(channelId: Int, bind: AMQP.Queue.Bind) = {
-    /*
-    for {
-      host <- session.virtualHost
-      exchange <- host.lookupExchange(bind.exchangeName.get)
-      queue <- host.lookupQueue(bind.queueName.get)
-    } yeild {
-      exchange.bind(queue, bind.routingKey.get)
-      val res = session.methodFactory.createQueueBindOk()
-      if(!bind.noWait) success(res.generateFrame(channelId)) else success()
-    }
-    */
 
     session.virtualHost.map( (host) =>
       host.lookupExchange(bind.exchangeName.get).map( (exchange) =>
@@ -147,9 +140,17 @@ class SimpleMethodHandler(val session: AMQProtocolSession) extends MethodHandler
     val res = session.getChannel(channelId).map( (channel) =>
       session.virtualHost.map( (host) =>
         host.lookupQueue(consume.queueName.get).map{ (queue) =>
+          implicit val sFun = {(consumerTag: String) =>
+            val method = session.methodFactory.createBasicConsumeOk(consumerTag)
+            session.writeFrame(method.generateFrame(channel.channelId))
+          }
+          implicit val eFun = {(replyText: String) =>
+            val method = session.methodFactory.createConnectionClose(AMQPError.NOT_ALLOWED, replyText, consume.classId, consume.methodId)
+            session.writeFrame(method.generateFrame(channel.channelId))
+          }
 
           // we return success here and let the channel return an error if any should come up
-          channel.subscribeToQueue(consume.consumerTag.get, queue)
+          channel.subscribeToQueue(consume.consumerTag.get, queue)(sFun, eFun)
           success()
 
         }.getOrElse(error(QueueDoesNotExist(consume.queueName.get)))

@@ -10,6 +10,10 @@ trait FramePayload extends CanWriteTo {
   val typeId: Int
 
   def size(): Int
+
+  def generateFrame(channelId: Int): Frame = {
+    Frame(typeId, channelId, this)
+  }
 }
 
 object Frame {

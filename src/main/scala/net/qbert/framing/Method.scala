@@ -20,10 +20,6 @@ trait Method extends FramePayload {
   }
 
   def size() = 2 + 2 + argSize
-
-  def generateFrame(channelId: Int): Frame = {
-    Frame(typeId, channelId, this)
-  }
 }
 
 

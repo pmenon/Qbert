@@ -7,8 +7,11 @@ trait Logging {
 
   def log(msg: String, args: Any*) = logger.debug(msg, args.toArray.asInstanceOf[Array[Object]])
 
-  def debug(msg: String, args: Any*) = logger.debug(msg, args.toArray.asInstanceOf[Array[Object]])
+  //def logDebug(msg: String, args: Any*) = logger.debug(msg, args.toArray.asInstanceOf[Array[Object]])
 
-  def info(msg: String, args: Any*) = logger.info(msg, args.toArray.asInstanceOf[Array[Object]])
+  def logDebug(msg: String, args: Any*) = {}
 
+  //def logInfo(msg: String, args: Any*) = logger.info(msg, args.toArray.asInstanceOf[Array[Object]])
+
+  def logInfo(msg: String, args: Any*) = {}
 }

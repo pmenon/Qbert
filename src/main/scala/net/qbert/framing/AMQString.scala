@@ -11,6 +11,8 @@ object AMQShortString extends CanReadFrom[AMQShortString] {
   }
   
   implicit def stringToShortSting(s: String):AMQShortString = new AMQShortString(s)
+  implicit def intToShortString(i: Int):AMQShortString = new AMQShortString(""+i)
+  implicit def longToShortString(l: Long):AMQShortString = new AMQShortString(""+l)
 }
 
 class AMQShortString(val s: String) extends AMQType {
