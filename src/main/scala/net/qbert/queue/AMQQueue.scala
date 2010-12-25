@@ -6,9 +6,11 @@ import net.qbert.logging.Logging
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
+import net.qbert.util.ActorDelegate
 
-import scala.actors.Future
-import scala.actors.Actor
+import akka.actor.Actor
+import akka.dispatch.Future
+
 import scala.collection.mutable
 
 trait AMQQueue {
@@ -20,12 +22,13 @@ trait AMQQueue {
   def dequeue(entry: QueueEntry): Unit
   def addSubscription(subscription: Subscription): Unit
   def removeSubscription(subscription: Subscription): Unit
-  def close: Unit
+  def stop: Unit
 }
 
 sealed abstract class QueueMessage
 object QueueMessages {
   case class EnqueueMessage(message: AMQMessageReference) extends QueueMessage
+  case class EnqueueWithResponse(message: AMQMessageReference) extends QueueMessage
   case class DequeueMessage(entry: QueueEntry) extends QueueMessage
   case class SubscribeMessage(subscription: Subscription) extends QueueMessage
   case class UnsubscribeMessage(subscription: Subscription) extends QueueMessage
@@ -33,28 +36,35 @@ object QueueMessages {
   case object StopQueue extends QueueMessage
 }
 
-trait ActorBasedQueue extends Actor with AMQQueue {
+trait ActorBasedQueue extends ActorDelegate with AMQQueue {
   import QueueMessages._
 
-  start
+  private val queueActor = Actor.actorOf(new AMQQueueActor).start
 
-  def enqueue(message: AMQMessage) = this ! EnqueueMessage(message.reference)
-  def enqueueAndWait(message: AMQMessage) = (this !! EnqueueMessage(message.reference)).asInstanceOf[Future[DeliveryResponse]]
-  def dequeue(entry: QueueEntry) = this ! DequeueMessage(entry)
-  def addSubscription(sub: Subscription) = this ! SubscribeMessage(sub)
-  def removeSubscription(sub: Subscription) = this ! UnsubscribeMessage(sub)
-  def close = this ! StopQueue
+  def enqueue(message: AMQMessage) = invokeNoResult(queueActor, EnqueueMessage(message.reference))
+  def enqueueAndWait(message: AMQMessage) = invoke(queueActor, EnqueueWithResponse(message.reference))
+  def dequeue(entry: QueueEntry) = invokeNoResult(queueActor, DequeueMessage(entry))
+  def addSubscription(sub: Subscription) = invokeNoResult(queueActor, SubscribeMessage(sub))
+  def removeSubscription(sub: Subscription) = invokeNoResult(queueActor, UnsubscribeMessage(sub))
+  def stop = {
+    invokeNoResult(queueActor, StopQueue)
+    queueActor.stop
+  }
 
-  def act() = loop(mainLoop)
+  private class AMQQueueActor extends Actor {
 
-  def mainLoop() = react {
-    case EnqueueMessage(message) =>
-      val canNotify = handleEnqueue(message)
-      if(message.m.isImmediate()) reply(DeliveryResponse(canNotify))
-    case DequeueMessage(entry) => handleDequeue(entry)
-    case SubscribeMessage(sub) => handleSubscribe(sub)
-    case UnsubscribeMessage(sub) => handleUnsubscribe(sub)
-    case StopQueue => handleStopQueue
+    def receive = {
+      case EnqueueMessage(message) => handleEnqueue(message)
+      case EnqueueWithResponse(message) =>
+        val canNotify = handleEnqueue(message)
+        if(message.m.isImmediate()) self.reply(DeliveryResponse(canNotify))
+      case DequeueMessage(entry) => handleDequeue(entry)
+      case SubscribeMessage(sub) => handleSubscribe(sub)
+      case UnsubscribeMessage(sub) => handleUnsubscribe(sub)
+      case StopQueue => handleStopQueue
+      case _ => log.error("Received unknown message on queue ...")
+    }
+
   }
   
   protected def handleEnqueue(message: AMQMessageReference): Boolean
@@ -90,7 +100,6 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
 
   def handleStopQueue() = {
     logInfo("Queue {} is stopping ...", name)
-    exit()
   }
 }
 

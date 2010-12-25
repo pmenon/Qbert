@@ -1,6 +1,6 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, FrameReader, FrameWriter }
 
 import scala.collection.mutable
 
@@ -15,7 +15,7 @@ class ArrayDeserializer extends FieldValueDeserializer {
   }
 }
 
-object AMQArray extends CanReadFrom[AMQArray] {
+object AMQArray extends CanReadIn[AMQArray] {
   val deserializer = new ArrayDeserializer
 
   def apply(array: Array[AMQFieldValue]) = new AMQArray(array)

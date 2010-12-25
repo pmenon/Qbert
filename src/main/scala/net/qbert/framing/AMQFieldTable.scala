@@ -1,6 +1,6 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, FrameReader, FrameWriter }
 
 import scala.collection.mutable
 
@@ -16,14 +16,16 @@ class FieldTableDeserializer extends FieldValueDeserializer {
   }
 }
 
-object AMQFieldTable extends CanReadFrom[AMQFieldTable] {
+object AMQFieldTable extends CanReadIn[AMQFieldTable] {
   val deserializer = new FieldTableDeserializer
 
   def apply():AMQFieldTable = apply(Map[AMQShortString, AMQFieldValue]())
   def apply(props: Map[AMQShortString, AMQFieldValue]) = new UnencodedFieldTable(props)
-  def apply(bytes: Array[Byte]) = new EncodedFieldTable(bytes)
   def apply(fr: FrameReader) = readFrom(fr)
-  def readFrom(fr: FrameReader) = deserializer readFieldTable fr
+  def readFrom(fr: FrameReader) = {
+    val s = fr.readLong
+    new EncodedFieldTable(s, fr.readBytes(s))
+  }
 }
 
 trait AMQFieldTable extends AMQType {
@@ -31,29 +33,25 @@ trait AMQFieldTable extends AMQType {
   lazy val tableSize = props.foldLeft(0){ (acc,tuple) => acc + tuple._1.size + tuple._2.size }
 
   def size() = 4 + tableSize
-  def get(key: AMQShortString): Option[AMQFieldValue]= props.get(key)  
+  def get(key: AMQShortString) = props.get(key)
   def writeTo(fw: FrameWriter) = {
-    //val tempWriter = new FrameWriter
-    //props foreach{ case (name, value) => name.writeTo(tempWriter); value.writeTo(tempWriter) }
-    //val size = tempWriter.bytesWritten
     fw.writeLong(tableSize)
     props foreach{ case (name, value) => name.writeTo(fw); value.writeTo(fw) }
-    //map foreach{ case (name, value) => name.writeTo(fw); value.writeTo(fw) }
-    //fw.writeFrom(tempWriter)
   }
 }
 
 class UnencodedFieldTable(val props: Map[AMQShortString, AMQFieldValue]) extends AMQFieldTable
 
-class EncodedFieldTable(val encodedArr: Array[Byte]) extends AMQFieldTable {
+class EncodedFieldTable(val eSize: Int, val encodedArr: Array[Byte]) extends AMQFieldTable {
   lazy val props = deserialize()
 
   def deserialize() = {
-    val fr = new FrameReader(encodedArr)
-    fr.readFieldTable.props
+    val fr = new FrameReader(Array(eSize).asInstanceOf[Array[Byte]] ++ encodedArr)
+    AMQFieldTable.deserializer.readFieldTable(fr).props
   }
   
   override def writeTo(fw: FrameWriter) = {
+    fw.writeLong(eSize)
     fw.writeBytes(encodedArr)
   }
 

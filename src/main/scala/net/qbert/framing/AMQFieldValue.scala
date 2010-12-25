@@ -1,7 +1,7 @@
 package net.qbert.framing
 
 import java.util.{ Date => JDate }
-import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanWriteOut, CanReadIn, FrameReader, FrameWriter }
 
 class FieldValueDeserializer {
 
@@ -21,7 +21,7 @@ class FieldValueDeserializer {
   }
 }
 
-object AMQFieldValue extends CanReadFrom[AMQFieldValue] {
+object AMQFieldValue extends CanReadIn[AMQFieldValue] {
   val deserializer = new FieldValueDeserializer
 
   def apply(fr: FrameReader) = readFrom(fr)
@@ -29,7 +29,7 @@ object AMQFieldValue extends CanReadFrom[AMQFieldValue] {
   
 }
 
-abstract class AMQFieldValue extends CanWriteTo with HasSize
+abstract class AMQFieldValue extends CanWriteOut with HasSize
 
 case class BooleanFieldValue(value: Boolean) extends AMQFieldValue {
   def size() = 1 + 1

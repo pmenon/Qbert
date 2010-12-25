@@ -29,7 +29,7 @@ class AMQQueueTest extends Specification with Mockito {
       val res = queue.enqueue(m)
 
       // stop the queue
-      queue.close()
+      queue.stop()
     }
 
     "persist itself if durable" in {
@@ -40,8 +40,8 @@ class AMQQueueTest extends Specification with Mockito {
       host.store.retrieveQueue(persistentQueue) must beSome[AMQQueue].which(_.name.equals("q1"))
       host.store.retrieveQueue(simpleQueue) must beNone
 
-      persistentQueue.close()
-      simpleQueue.close()
+      persistentQueue.stop()
+      simpleQueue.stop()
     }
 
     "notify subscribers on enqueue" in {
@@ -82,7 +82,7 @@ class AMQQueueTest extends Specification with Mockito {
       there was no(channel3).onEnqueue(any, any)
 
       // stop the queue and channels
-      queue.close()
+      queue.stop()
       channel1.stop()
       channel2.stop()
       channel3.stop()
@@ -101,7 +101,7 @@ class AMQQueueTest extends Specification with Mockito {
       val m = new AMQMessage(1, info, header, body)
       
       // enqueueing the message and waiting should return false as the message was not delivered
-      simpleQueue.enqueueAndWait(m).apply().delivered must beFalse
+      simpleQueue.enqueueAndWait(m).await.result.map(_.delivered).getOrElse(false) must beFalse
 
       // create a mock channel that accepts any message
       val channel = mock[AMQChannel]
@@ -110,10 +110,10 @@ class AMQQueueTest extends Specification with Mockito {
       simpleQueue.addSubscription(Subscription("tag1", channel, simpleQueue))
 
       // the queue should return true since it delivered the message to the sole subscription/channel
-      simpleQueue.enqueueAndWait(m).apply().delivered must beTrue
+      simpleQueue.enqueueAndWait(m).await.result.map(_.delivered).getOrElse(false) must beTrue
 
       // stop the queue
-      simpleQueue.close()
+      simpleQueue.stop()
       channel.stop()
     }
   }

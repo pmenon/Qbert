@@ -10,6 +10,10 @@ object AMQFrameCodec {
   def frameEncoder() = new AMQFrameEncoderImpl
 }
 
+/**
+ * An AMQP Frame encoder needs to accept a frame, encode it the w
+ * wire-level format and return the result
+ */
 trait AMQFrameEncoder {
   def encode(frame: Frame): AnyRef
 }
@@ -22,6 +26,11 @@ class AMQFrameEncoderImpl extends AMQFrameEncoder {
   }
 }
 
+/**
+ * An AMQP Frame Decoder accepts a frame reader and optinally
+ * returns an amqp data block.  The data block can either be
+ * a protocol initiation frame or a regular AMQP frame.
+ */
 trait AMQFrameDecoder {
   def decode(fr: FrameReader): Option[AMQDataBlock]
 }
@@ -71,13 +80,3 @@ class AMQProtocolInitiationDecoderImpl extends AMQFrameDecoder {
     Some(new ProtocolInitiation(header, classId, instance, major, minor))
   }
 }
-
-
-
-
-
-
-
-
-
-

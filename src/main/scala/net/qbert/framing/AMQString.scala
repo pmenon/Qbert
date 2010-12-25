@@ -1,8 +1,8 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, FrameReader, FrameWriter }
 
-object AMQShortString extends CanReadFrom[AMQShortString] {
+object AMQShortString extends CanReadIn[AMQShortString] {
   def apply(s: String) = new AMQShortString(s)
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
@@ -26,7 +26,7 @@ class AMQShortString(val s: String) extends AMQType {
   override def toString() = s
 }
 
-object AMQLongString extends CanReadFrom[AMQLongString] {
+object AMQLongString extends CanReadIn[AMQLongString] {
   def apply(s: String) = new AMQLongString(s.getBytes("utf-8"))
   def apply(bytes: Array[Byte]) = new AMQLongString(bytes)
   def apply(fr: FrameReader) = readFrom(fr)

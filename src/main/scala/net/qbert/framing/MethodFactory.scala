@@ -3,7 +3,7 @@ package net.qbert.framing
 import amqp_081.MethodFactory_081
 import amqp_091.MethodFactory_091
 import net.qbert.protocol.ProtocolVersion
-import net.qbert.network.{ CanReadFrom, FrameReader }
+import net.qbert.network.{ CanReadIn, FrameReader }
 
 object MethodFactory {
   private val map = Map((0,9) -> new MethodFactory_091,
@@ -14,7 +14,7 @@ object MethodFactory {
   }
 }
 
-trait MethodFactory extends CanReadFrom[Option[Method]] {
+trait MethodFactory extends CanReadIn[Option[Method]] {
   def createMethodFrom(fr: FrameReader): Option[Method]
   def readFrom(fr: FrameReader) = createMethodFrom(fr)
 

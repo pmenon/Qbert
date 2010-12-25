@@ -1,12 +1,11 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, FrameReader, FrameWriter }
 
-object ContentBody extends CanReadFrom[Option[ContentBody]] {
+object ContentBody extends CanReadIn[Option[ContentBody]] {
   def apply(buffer: Array[Byte]) = new ContentBody(buffer)
   def readFrom(fr: FrameReader) = Some(new ContentBody(fr.readBytes(fr.readableBytes-1)))
   def readFrom(fr: FrameReader, size: Int) = Some(new ContentBody(fr.readBytes(size)))
-
 }
 
 class ContentBody(val buffer: Array[Byte]) extends FramePayload {
@@ -15,5 +14,4 @@ class ContentBody(val buffer: Array[Byte]) extends FramePayload {
   def size() = buffer.length
 
   def writeTo(fw: FrameWriter) = fw.writeBytes(buffer)
-
 }

@@ -2,18 +2,18 @@ package net.qbert.channel
 
 import net.qbert.framing.{ ContentBody, ContentHeader }
 import net.qbert.logging.Logging
+import net.qbert.util.ActorDelegate
 import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.queue.{ AMQQueue, QueueEntry, QueueConsumer }
 import net.qbert.subscription.Subscription
 
-import scala.actors.Actor
+import akka.actor.Actor
 import scala.collection.mutable
 
 object AMQChannel {
   val systemChannelId = 0
 }
-
 
 // The messages an AMQChannel handles
 sealed abstract class ChannelMessage()
@@ -26,34 +26,38 @@ case class SubscriptionRequest[T <: AnyRef](consumerTag: String, q: AMQQueue, sF
 case object StopChannel extends ChannelMessage
 
 
-class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Actor with QueueConsumer with Logging {
+class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends ActorDelegate with QueueConsumer with Logging {
   logInfo("Channel created with id {} ", channelId)
 
   private var deliveryTag: Long = 0
   private var consumerTag: Long = 0
   private val subscriptions = mutable.Map[String, Subscription]()
   private var partialMessage: Option[PartialMessage] = None
-  
-  // start as soon as we instantiate
-  start
+  private val channelActor = Actor.actorOf(new AMQChannelActor).start
 
   // the main API for a channel
-  def publishReceived(info: MessagePublishInfo) = this ! PublishReceived(info)
-  def publishContentHeader(header: ContentHeader) = this ! ContentHeaderReceived(header)
-  def publishContentBody(body: ContentBody) = this ! ContentBodyReceived(body)
-  def deliverMessage(s: Subscription, m: AMQMessage) = this ! DeliverMessage(m)
-  def subscribeToQueue[T <: AnyRef](consumerTag: String, q: AMQQueue)(implicit sFun: (String) => T, eFun: (String) => T) = this ! SubscriptionRequest(consumerTag, q, sFun, eFun)
-  def stop() = this ! StopChannel
+  def publishReceived(info: MessagePublishInfo) = invokeNoResult(channelActor, PublishReceived(info))
+  def publishContentHeader(header: ContentHeader) = invokeNoResult(channelActor, ContentHeaderReceived(header))
+  def publishContentBody(body: ContentBody) = invokeNoResult(channelActor, ContentBodyReceived(body))
+  def deliverMessage(s: Subscription, m: AMQMessage) = invokeNoResult(channelActor, DeliverMessage(m))
+  def subscribeToQueue[T <: AnyRef](consumerTag: String, q: AMQQueue)(implicit sFun: (String) => T, eFun: (String) => T) = invokeNoResult(channelActor, SubscriptionRequest(consumerTag, q, sFun, eFun))
+  def stop() = {
+    invokeNoResult(channelActor, StopChannel)
+    channelActor.stop
+  }
 
-  def act() = loop(mainLoop)
+  private class AMQChannelActor extends Actor {
 
-  def mainLoop() = react {
-    case PublishReceived(info) => handlePublishFrame(info)
-    case ContentHeaderReceived(header) => handleContentHeader(header)
-    case ContentBodyReceived(body) => handleContentBody(body)
-    case DeliverMessage(m) => handleMessageDelivery(m)
-    case SubscriptionRequest(tag, q, sFun, eFun) => handleSubscriptionRequest(tag, q, sFun, eFun)
-    case StopChannel => stopChannel()
+    def receive = {
+      case PublishReceived(info) => handlePublishFrame(info)
+      case ContentHeaderReceived(header) => handleContentHeader(header)
+      case ContentBodyReceived(body) => handleContentBody(body)
+      case DeliverMessage(m) => handleMessageDelivery(m)
+      case SubscriptionRequest(tag, q, sFun, eFun) => handleSubscriptionRequest(tag, q, sFun, eFun)
+      case StopChannel => stopChannel()
+      case _ => log.error("Received unknown message on channel {} ...", channelId)
+    }
+
   }
 
   private def nextDeliveryTag = {
@@ -133,7 +137,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
       handleUnroutableMessage(message)
     } else if (message.isImmediate()) {
       // an immediate message must be delivered to atleast a single consumer on a single queue
-      val res = queues.map(_.enqueueAndWait(message)).foldLeft(false)( (acc,res) => acc || res().delivered )
+      val res = queues.map(_.enqueueAndWait(message)).foldLeft(false)( (acc,res) => acc || res.await.result.map(_.delivered).getOrElse(false) )
       if(!res) handleUndeliveredMessage(message)
     } else {
       queues.foreach(_.enqueue(message))
@@ -145,7 +149,6 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   def stopChannel() = {
     //do much much more here
     logInfo("Channel {} is stopping ... ", channelId)
-    exit()
   }
 
 

@@ -1,36 +1,39 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanReadFrom, CanWriteTo, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, CanWriteOut, FrameReader, FrameWriter }
 
 import java.util.{ Date => JDate }
 
 
-object BasicProperties extends CanReadFrom[BasicProperties] {
-  
+object BasicProperties extends CanReadIn[BasicProperties] {
+  /*
   class RicherBoolean(b: Boolean) {
     def optionally[T](f: => T):Option[T] = if(b) Some(f) else None
   }
 
+  class RichTrue
+
   implicit def booleanToRicherBoolean(b: Boolean) = new RicherBoolean(b)
+  */
 
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
     val props = fr.readShort
     val basicProps = 0 to 14 map( i => ((props >> i) & 1) != 0 )
-    new BasicProperties(basicProps(13) optionally fr.readShortString,
-                        basicProps(12) optionally fr.readShortString,
-                        basicProps(11) optionally fr.readFieldTable,
-                        basicProps(10) optionally fr.readOctet,
-                        basicProps(9) optionally fr.readOctet,
-                        basicProps(8) optionally fr.readShortString,
-                        basicProps(7) optionally fr.readShortString,
-                        basicProps(6) optionally fr.readShortString,
-                        basicProps(5) optionally fr.readShortString,
-                        basicProps(4) optionally fr.readTimestamp,
-                        basicProps(3) optionally fr.readShortString,
-                        basicProps(2) optionally fr.readShortString,
-                        basicProps(1) optionally fr.readShortString,
-                        basicProps(0) optionally fr.readShortString)
+    new BasicProperties(if(basicProps(13)) Some(fr.readShortString) else None,
+                        if(basicProps(12)) Some(fr.readShortString) else None,
+                        if(basicProps(11)) Some(fr.readFieldTable) else None,
+                        if(basicProps(10)) Some(fr.readOctet) else None,
+                        if(basicProps(9)) Some(fr.readOctet) else None,
+                        if(basicProps(8)) Some(fr.readShortString) else None,
+                        if(basicProps(7)) Some(fr.readShortString) else None,
+                        if(basicProps(6)) Some(fr.readShortString) else None,
+                        if(basicProps(5)) Some(fr.readShortString) else None,
+                        if(basicProps(4)) Some(fr.readTimestamp) else None,
+                        if(basicProps(3)) Some(fr.readShortString) else None,
+                        if(basicProps(2)) Some(fr.readShortString) else None,
+                        if(basicProps(1)) Some(fr.readShortString) else None,
+                        if(basicProps(0)) Some(fr.readShortString) else None)
   }
                                
 }
@@ -41,7 +44,7 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
                            expiration: Option[AMQShortString], messageId: Option[AMQShortString],
                            timestamp: Option[JDate], typ: Option[AMQShortString], 
                            userId: Option[AMQShortString], appId: Option[AMQShortString], 
-                           clusterId: Option[AMQShortString]) extends CanWriteTo {
+                           clusterId: Option[AMQShortString]) extends CanWriteOut {
   import AMQType._
 
   lazy val params = List[Option[AMQType]](contentType, contentEncoding, headers, deliveryMode, priority,
@@ -50,25 +53,19 @@ case class BasicProperties(contentType: Option[AMQShortString], contentEncoding:
 
   // TODO: we could do some performance enhancements by iterating through the params once
   // to generate both the bitfield props and calcualte the size
-  // lazy val (props, size) = params.foldLeft((0,0))( (acc, o) => ( (acc << 1) | (if(o.isDefined) 1 else 0), acc._2 + (if(o.isDefined) o.get.size else 0) ) )
+  lazy val (props, propsSize) = params.foldLeft((0,0))( (acc, o) => ( (acc._1 << 1) | (if(o.isDefined) 1 else 0), acc._2 + (if(o.isDefined) o.get.size else 0) ) )
 
   def size() = {
-    2 + params.foldLeft(0)( (acc, o) => acc + (if(o.isDefined) o.get.size else 0) )
+    2 + propsSize
   }
 
   def writeTo(fw: FrameWriter) = {
-    var props = 0
-    val tempFw = new FrameWriter(size() - 2)
-
-    props = params.foldLeft(0)( (acc, o) => (acc << 1) | (if(o.isDefined) 1 else 0) )
-    params.foreach(x => x.map(_.writeTo(tempFw)))
-
     fw.writeShort(props)
-    fw.writeFrom(tempFw)
+    params.foreach(x => x.map(_.writeTo(fw)))
   }
 }
 
-object ContentHeader extends CanReadFrom[ContentHeader] {
+object ContentHeader extends CanReadIn[ContentHeader] {
   def apply(fr: FrameReader) = readFrom(fr)
   def readFrom(fr: FrameReader) = {
     new ContentHeader(fr.readShort, fr.readShort, fr.readLongLong, BasicProperties(fr))

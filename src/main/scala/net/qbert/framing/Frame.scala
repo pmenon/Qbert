@@ -1,12 +1,12 @@
 package net.qbert.framing
 
-import net.qbert.network.{CanWriteTo, FrameWriter}
+import net.qbert.network.{CanWriteOut, FrameWriter}
 
-trait AMQDataBlock extends CanWriteTo {
+trait AMQDataBlock extends CanWriteOut {
   def size(): Int
 }
 
-trait FramePayload extends CanWriteTo {
+trait FramePayload extends CanWriteOut {
   val typeId: Int
 
   def size(): Int

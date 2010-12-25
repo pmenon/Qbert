@@ -1,11 +1,11 @@
 package net.qbert.network.netty
 
 import net.qbert.network.{FrameReader}
-import net.qbert.framing.{AMQFrameCodec, AMQFrameDecoder, AMQFrameEncoder, Frame}
+import net.qbert.framing.{AMQFrameCodec, AMQFrameDecoder, Frame}
 import net.qbert.protocol.ProtocolVersion
 
 import org.jboss.netty.buffer.{ ChannelBuffer, ChannelBuffers }
-import org.jboss.netty.channel.{ChannelHandlerContext, Channel, ChannelLocal }
+import org.jboss.netty.channel.{ChannelHandlerContext, Channel }
 import org.jboss.netty.handler.codec.frame.FrameDecoder
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
 
@@ -51,8 +51,7 @@ trait NettyDecoder {
 class NettyInitialAMQDecoder extends FrameDecoder with NettyDecoder {
   val decoder = AMQFrameCodec.protocolInitiationDecoder
 
-  override def decode(c: ChannelHandlerContext, ch: Channel, buf: ChannelBuffer):Object = {
-    import NettyCodec._
+  override def decode(c: ChannelHandlerContext, ch: Channel, buf: ChannelBuffer) = {
     val protocolVersion = ChannelAttributes.getVersion(ch)
     if (protocolVersion ne null) {
       val frameDecoder = NettyCodec.decoder(protocolVersion)
@@ -71,7 +70,8 @@ class NettyInitialAMQDecoder extends FrameDecoder with NettyDecoder {
 
 class NettyAMQFrameDecoder(val version: ProtocolVersion) extends FrameDecoder with NettyDecoder {
   val decoder = AMQFrameCodec.frameDecoder(version)
-  override def decode(c: ChannelHandlerContext, ch: Channel, buf: ChannelBuffer): Object = doDecode(buf)
+
+  override def decode(c: ChannelHandlerContext, ch: Channel, buf: ChannelBuffer) = doDecode(buf)
 }
 
 class NettyAMQEncoder extends OneToOneEncoder {

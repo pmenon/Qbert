@@ -1,6 +1,6 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanReadFrom, FrameReader}
+import net.qbert.network.{ CanReadIn, FrameReader}
 import net.qbert.protocol.ProtocolVersion
 
 object ContentHeaderFactory {

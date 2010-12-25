@@ -1,6 +1,6 @@
 package net.qbert.framing
 
-import net.qbert.network.{ CanWriteTo, FrameWriter }
+import net.qbert.network.{ CanWriteOut, FrameWriter }
 
 import java.util.{ Date => JDate}
 
@@ -16,7 +16,7 @@ object AMQType {
 
 }
 
-abstract class AMQType extends CanWriteTo with HasSize 
+abstract class AMQType extends CanWriteOut with HasSize
 
 case class OctetType(value: Byte) extends AMQType {
   def size() = 1

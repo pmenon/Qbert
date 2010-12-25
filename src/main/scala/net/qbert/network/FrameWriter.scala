@@ -4,7 +4,7 @@ import net.qbert.framing.{ AMQArray, AMQShortString, AMQLongString, AMQFieldTabl
 import java.util.{Date => JDate}
 import org.jboss.netty.buffer.ChannelBuffers
 
-trait CanWriteTo {
+trait CanWriteOut {
   def writeTo(fw: FrameWriter): Unit
   //def encodedSize(): Int
 }
@@ -18,9 +18,7 @@ trait CanWriteTo {
  * For now, keep it this way and deprecate once we're sure we dont need it
  */
 class FrameWriter(size: Int) {
-  def this() = this(512)
-  // this should be a direct buffer, not dynamic
-  private val buf = ChannelBuffers.buffer(size)
+  private val buf = ChannelBuffers.directBuffer(size)
 
   def bytesWritten() = buf.readableBytes
   def writeFrom(other: FrameWriter) = buf.writeBytes(other.frame)

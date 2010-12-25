@@ -2,7 +2,7 @@ package net.qbert.framing.amqp_091
 
 import net.qbert.framing.{ AMQP, AMQArray, AMQFieldTable, AMQLongString, AMQShortString }
 import net.qbert.handler.MethodHandler
-import net.qbert.network.{ CanWriteTo, CanReadFrom, FrameReader, FrameWriter }
+import net.qbert.network.{ CanWriteOut, CanReadIn, FrameReader, FrameWriter }
 
 object AMQP_091 {
   object Connection {
@@ -172,7 +172,7 @@ object AMQP_091 {
     }
 
     // Connection.Close
-    object Close extends CanReadFrom[Close] {
+    object Close extends CanReadIn[Close] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = {
         new Close(fr.readShort, fr.readShortString, fr.readShort, fr.readShort)
@@ -260,7 +260,7 @@ object AMQP_091 {
   object Basic {
 
     // Basic.Consume
-    object Consume extends CanReadFrom[Consume] {
+    object Consume extends CanReadIn[Consume] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = {
         new Consume(fr.readShort, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
@@ -290,7 +290,7 @@ object AMQP_091 {
     }
 
     // Basic.ConsumeOk
-    object ConsumeOk extends CanReadFrom[ConsumeOk] {
+    object ConsumeOk extends CanReadIn[ConsumeOk] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = {
         new ConsumeOk(fr.readShortString)
@@ -311,7 +311,7 @@ object AMQP_091 {
     }
 
     // Basic.Publish
-    object Publish extends CanReadFrom[Publish] {
+    object Publish extends CanReadIn[Publish] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = {
         new Publish(fr.readShort, fr.readShortString, fr.readShortString, fr.readOctet)
@@ -340,7 +340,7 @@ object AMQP_091 {
     }
 
     // Basic.Deliver
-    object Deliver extends CanReadFrom[Deliver] {
+    object Deliver extends CanReadIn[Deliver] {
       def apply(fr: FrameReader) = readFrom(fr)
       def apply(consumerTag: AMQShortString, deliveryTag: Long, redelivered: Boolean, exchange: AMQShortString, routingKey: AMQShortString) = {
         var bitField = 0
@@ -370,8 +370,11 @@ object AMQP_091 {
     }
   }
 
+  // Exchange
   object Exchange {
-    object Declare extends CanReadFrom[Declare] {
+
+    // Exchange.Declare
+    object Declare extends CanReadIn[Declare] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new Declare(fr.readShort, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
     }
@@ -399,7 +402,7 @@ object AMQP_091 {
       }
     }
 
-    object DeclareOk extends CanReadFrom[DeclareOk] {
+    object DeclareOk extends CanReadIn[DeclareOk] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new DeclareOk
     }
@@ -421,7 +424,7 @@ object AMQP_091 {
   object Queue {
 
     // Queue.Declare
-    object Declare extends CanReadFrom[Declare] {
+    object Declare extends CanReadIn[Declare] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new Declare(fr.readShort, fr.readShortString, fr.readOctet, fr.readFieldTable)
     }
@@ -451,7 +454,7 @@ object AMQP_091 {
     }
 
     // Queue.DeclareOk
-    object DeclareOk extends CanReadFrom[DeclareOk] {
+    object DeclareOk extends CanReadIn[DeclareOk] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new DeclareOk(fr.readShortString, fr.readLong, fr.readLong)
     }
@@ -474,7 +477,7 @@ object AMQP_091 {
     }
 
     // Queue.Bind
-    object Bind extends CanReadFrom[Bind] {
+    object Bind extends CanReadIn[Bind] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new Bind(fr.readShort, fr.readShortString, fr.readShortString, fr.readShortString, fr.readOctet, fr.readFieldTable)
     }
@@ -500,7 +503,7 @@ object AMQP_091 {
 
     }
 
-    object BindOk extends CanReadFrom[BindOk] {
+    object BindOk extends CanReadIn[BindOk] {
       def apply(fr: FrameReader) = readFrom(fr)
       def readFrom(fr: FrameReader) = new BindOk
     }
