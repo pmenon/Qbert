@@ -1,5 +1,6 @@
 package net.qbert.handler
 
+import net.qbert.connection.AMQConnection
 import net.qbert.error.{ QbertError, GenericQbertResponse }
 import net.qbert.framing.{ AMQP, Frame, Method }
 import net.qbert.protocol.AMQProtocolSession
@@ -21,7 +22,8 @@ case class MethodSuccessResponse(res: Frame) extends MethodHandlerResponse
 
 object MethodHandler {
 
-  def apply(session: AMQProtocolSession) = new SimpleMethodHandler(session)
+  //def apply(session: AMQProtocolSession) = new SimpleMethodHandler(session)
+  def apply(conn: AMQConnection) = new SimpleMethodHandler(conn)
 
 }
 

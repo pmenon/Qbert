@@ -1,8 +1,15 @@
 package net.qbert.framing
 
-import net.qbert.network.{CanWriteOut, FrameWriter}
+import net.qbert.network.{ CanWriteOut, FrameWriter }
+
+object AMQDataBlock {
+  val PROTOCOL_INITIATION = 1
+  val REGULAR_FRAME = 2
+}
 
 trait AMQDataBlock extends CanWriteOut {
+  val frameType: Int
+
   def size(): Int
 }
 
@@ -32,6 +39,7 @@ object Frame {
 }
 
 class Frame(val typeId: Int, val channelId: Int, val length: Int, val payload: FramePayload) extends AMQDataBlock {
+  val frameType = AMQDataBlock.REGULAR_FRAME
 
   def size() = {
     1 + 2 + 4 + payload.size() + 1
@@ -57,6 +65,7 @@ object ProtocolInitiation {
 }
 
 class ProtocolInitiation(val header: Array[Byte], val classId: Byte, val major: Byte, val minor: Byte, val revision: Byte) extends AMQDataBlock {
+  val frameType = AMQDataBlock.PROTOCOL_INITIATION
 
   def size() = 4 + 1 + 1 + 1 + 1
 

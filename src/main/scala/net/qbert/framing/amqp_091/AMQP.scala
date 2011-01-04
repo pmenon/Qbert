@@ -1,8 +1,8 @@
 package net.qbert.framing.amqp_091
 
-import net.qbert.framing.{ AMQP, AMQArray, AMQFieldTable, AMQLongString, AMQShortString }
+import net.qbert.framing.{ AMQP, AMQFieldTable, AMQLongString, AMQShortString }
 import net.qbert.handler.MethodHandler
-import net.qbert.network.{ CanWriteOut, CanReadIn, FrameReader, FrameWriter }
+import net.qbert.network.{ CanReadIn, FrameReader, FrameWriter }
 
 object AMQP_091 {
   object Connection {

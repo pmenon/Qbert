@@ -3,7 +3,7 @@ package net.qbert.framing.amqp_081
 import net.qbert.protocol.ProtocolVersion
 import net.qbert.framing.{AMQShortString, AMQLongString, AMQFieldTable, MethodFactory}
 import net.qbert.network.FrameReader
-import net.qbert.logging.Logging
+import net.qbert.util.Logging
 
 class MethodFactory_081 extends MethodFactory with Logging {
   import net.qbert.framing.amqp_091.AMQP_091._

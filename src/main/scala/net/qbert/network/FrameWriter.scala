@@ -18,10 +18,9 @@ trait CanWriteOut {
  * For now, keep it this way and deprecate once we're sure we dont need it
  */
 class FrameWriter(size: Int) {
-  private val buf = ChannelBuffers.directBuffer(size)
+  private val buf = ChannelBuffers.buffer(size)
 
   def bytesWritten() = buf.readableBytes
-  def writeFrom(other: FrameWriter) = buf.writeBytes(other.frame)
 
   def writeOctet(byte: Int) = buf.writeByte(byte)
   def writeShort(short: Int) = buf.writeShort(short)

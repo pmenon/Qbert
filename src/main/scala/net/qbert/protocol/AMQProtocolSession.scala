@@ -6,7 +6,7 @@ import net.qbert.framing.{ ContentBody, ContentHeader, Frame, Method, MethodFact
 import net.qbert.handler.MethodHandlerResponse
 import net.qbert.virtualhost.AMQVirtualHost
 
-trait AMQProtocolSession extends ChannelManager {
+trait AMQProtocolSession {//extends ChannelManager {
   val conn: AMQConnection
   var protocolVersion: ProtocolVersion = null
   var virtualHost: Option[AMQVirtualHost] = None
@@ -19,7 +19,7 @@ trait AMQProtocolSession extends ChannelManager {
   def writeFrame(frame: Frame) = conn writeFrame frame
 
   def init(pv: ProtocolVersion) = {
-    conn.initialize(pv)
+    //conn.initialize(pv)
     protocolVersion = pv
     methodFactory = MethodFactory.createWithVersion(protocolVersion)
   }

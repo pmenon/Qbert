@@ -1,6 +1,6 @@
 package net.qbert.exchange
 
-import net.qbert.logging.Logging
+import net.qbert.util.Logging
 import net.qbert.util.Registry
 
 class ExchangeRegistry extends Registry[String, AMQExchange] with Logging {

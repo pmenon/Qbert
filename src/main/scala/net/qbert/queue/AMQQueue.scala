@@ -2,7 +2,7 @@ package net.qbert.queue
 
 import net.qbert.store.Store
 import net.qbert.message.{AMQMessage, AMQMessageReference}
-import net.qbert.logging.Logging
+import net.qbert.util.Logging
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.subscription.Subscription
 import net.qbert.virtualhost.AMQVirtualHost
@@ -81,7 +81,7 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
   val subscribers = mutable.ArrayBuffer[Subscription]()
 
   def handleEnqueue(m: AMQMessageReference): Boolean = {
-    logInfo("Queue {} received a message: {}", name, new String(m.m.body.buffer, "utf-8"))
+    log.info("Queue {} received a message: {}", name, new String(m.m.body.buffer, "utf-8"))
     val entry = QueueEntry(m)
     // we can notify if we have subscribers and one accepts the message
     val canNotify = subscribers.length != 0 && notifySubscribers(entry)
@@ -99,7 +99,7 @@ abstract class BaseQueue(val name: String, val virtualHost: AMQVirtualHost) exte
   def notifySubscribers(entry: QueueEntry) = (subscribers.takeWhile(!canBeDelivered(entry, _)).length) != subscribers.length
 
   def handleStopQueue() = {
-    logInfo("Queue {} is stopping ...", name)
+    log.info("Queue {} is stopping ...", name)
   }
 }
 

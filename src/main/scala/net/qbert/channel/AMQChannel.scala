@@ -1,8 +1,8 @@
 package net.qbert.channel
 
+import net.qbert.connection.AMQConnection
 import net.qbert.framing.{ ContentBody, ContentHeader }
-import net.qbert.logging.Logging
-import net.qbert.util.ActorDelegate
+import net.qbert.util.{ ActorDelegate, Logging }
 import net.qbert.message.{ AMQMessage, MessagePublishInfo, PartialMessage }
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.queue.{ AMQQueue, QueueEntry, QueueConsumer }
@@ -22,12 +22,12 @@ case class PublishReceived(info: MessagePublishInfo) extends ChannelMessage()
 case class ContentHeaderReceived(header: ContentHeader) extends ChannelMessage()
 case class ContentBodyReceived(body: ContentBody) extends ChannelMessage()
 case class DeliverMessage(m: AMQMessage) extends ChannelMessage
-case class SubscriptionRequest[T <: AnyRef](consumerTag: String, q: AMQQueue, sFun: (String) => T, eFun: (String) => T) extends ChannelMessage
+case class SubscriptionRequest[T](consumerTag: String, q: AMQQueue, sFun: (String) => T, eFun: (String) => T) extends ChannelMessage
 case object StopChannel extends ChannelMessage
 
 
-class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends ActorDelegate with QueueConsumer with Logging {
-  logInfo("Channel created with id {} ", channelId)
+class AMQChannel(val channelId: Int, val conn: AMQConnection) extends ActorDelegate with QueueConsumer with Logging {
+  log.info("Channel created with id {} ", channelId)
 
   private var deliveryTag: Long = 0
   private var consumerTag: Long = 0
@@ -40,7 +40,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   def publishContentHeader(header: ContentHeader) = invokeNoResult(channelActor, ContentHeaderReceived(header))
   def publishContentBody(body: ContentBody) = invokeNoResult(channelActor, ContentBodyReceived(body))
   def deliverMessage(s: Subscription, m: AMQMessage) = invokeNoResult(channelActor, DeliverMessage(m))
-  def subscribeToQueue[T <: AnyRef](consumerTag: String, q: AMQQueue)(implicit sFun: (String) => T, eFun: (String) => T) = invokeNoResult(channelActor, SubscriptionRequest(consumerTag, q, sFun, eFun))
+  def subscribeToQueue[T](consumerTag: String, q: AMQQueue)(sFun: (String) => T, eFun: (String) => T) = invokeNoResult(channelActor, SubscriptionRequest(consumerTag, q, sFun, eFun))
   def stop() = {
     invokeNoResult(channelActor, StopChannel)
     channelActor.stop
@@ -73,11 +73,11 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   private def handleSubscriptionRequest[T](consumerTag: String, q: AMQQueue, sFun: (String) => T, eFun: (String) => T) = {
     subscriptions.get(consumerTag) match {
       case Some(subscription) =>
-        logInfo("Subscription {} already exists for channel {}, closing connection ...", consumerTag, channelId)
+        log.info("Subscription {} already exists for channel {}, closing connection ...", consumerTag, channelId)
         eFun("ERROR")
       case None =>
         val tag = if(consumerTag.isEmpty) "qbert_gen_" + nextConsumerTag else consumerTag
-        logInfo("Creating subscription with tag {} on channel {} ...", tag, channelId)
+        log.info("Creating subscription with tag {} on channel {} ...", tag, channelId)
         val subscription = Subscription(tag, this, q)
         q.addSubscription(subscription)
         subscriptions(tag) = subscription
@@ -99,7 +99,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   }
 
   private def handlePublishFrame(publishInfo: MessagePublishInfo) = {
-    logInfo("Channel {} received basic.publish {}", channelId, publishInfo)
+    log.info("Channel {} received basic.publish {}", channelId, publishInfo)
     partialMessage match {
       case None => partialMessage = Some(PartialMessage(Some(publishInfo), None))
       case _ => error("Received basic.publish while waiting for content")
@@ -107,7 +107,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   }
 
   private def handleContentHeader(header: ContentHeader) = {
-    logInfo("Channel {} received content header {}", channelId, header)
+    log.info("Channel {} received content header {}", channelId, header)
     partialMessage match {
       case Some(PartialMessage(Some(p), None)) => 
         partialMessage = Some(PartialMessage(Some(p), Some(header)))
@@ -116,7 +116,7 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
   }
 
   private def handleContentBody(body: ContentBody) = {
-    logInfo("Channel {} received content body {}", channelId, new String(body.buffer, "utf-8"))
+    log.info("Channel {} received content body {}", channelId, new String(body.buffer, "utf-8"))
     partialMessage match {
       case Some(PartialMessage(Some(p), Some(h))) => 
         partialMessage.get.addContent(body) 
@@ -127,9 +127,9 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
 
   private def deliverMessage() = {
     val message = new AMQMessage(1, partialMessage.get.info.get, partialMessage.get.header.get, partialMessage.get.body)
-    if(message.isPersistent()) session.virtualHost.foreach(_.store.storeMessage(message))
+    if(message.isPersistent()) conn.virtualHost.store.storeMessage(message)
 
-    val exchange = session.virtualHost.map(_.lookupExchange(message.info.exchangeName)).getOrElse(None)
+    val exchange = conn.virtualHost.lookupExchange(message.info.exchangeName)
     val queues = exchange.map(_.route(message, message.info.routingKey)).getOrElse(List[AMQQueue]())
 
     if(message.isMandatory && queues.length <= 0) {
@@ -148,15 +148,15 @@ class AMQChannel(val channelId: Int, val session: AMQProtocolSession) extends Ac
 
   def stopChannel() = {
     //do much much more here
-    logInfo("Channel {} is stopping ... ", channelId)
+    log.info("Channel {} is stopping ... ", channelId)
   }
 
 
   def onEnqueue(consumerTag: String, entry: QueueEntry) = {
-    val deliver = session.methodFactory.createBasicDeliver(consumerTag, nextDeliveryTag, false, entry.msg.m.info.exchangeName, entry.msg.m.info.routingKey)
-    session.writeFrame(deliver.generateFrame(channelId))
-    session.writeFrame(entry.msg.m.header.generateFrame(channelId))
-    session.writeFrame(entry.msg.m.body.generateFrame(channelId))
+    val deliver = conn.methodFactory.createBasicDeliver(consumerTag, nextDeliveryTag, false, entry.msg.m.info.exchangeName, entry.msg.m.info.routingKey)
+    conn.writeFrame(deliver.generateFrame(channelId))
+    conn.writeFrame(entry.msg.m.header.generateFrame(channelId))
+    conn.writeFrame(entry.msg.m.body.generateFrame(channelId))
     true
   }
 

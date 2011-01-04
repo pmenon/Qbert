@@ -1,19 +1,14 @@
 package net.qbert.channel
 
+import net.qbert.connection.AMQConnection
 import net.qbert.protocol.AMQProtocolSession
 import net.qbert.util.Registry
 
-import java.util.concurrent.atomic
-import scala.collection.mutable
-
 class ChannelRegistry extends Registry[Long, AMQChannel]
 
-trait ChannelManager {self: AMQProtocolSession =>
-  //val channelMap = new mutable.HashMap[Long, AMQChannel]()
-  private val channelMap = new ChannelRegistry
-  private var maxChannels = None
-
-  def maxChannels_=(channels: Int) = Some(channels)
+trait ChannelManager { self: AMQConnection =>
+  val channelMap = new ChannelRegistry
+  val maxChannels: Int
 
   def channel(channelId: Int) = getChannel(channelId)
 

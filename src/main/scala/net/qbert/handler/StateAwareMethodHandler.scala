@@ -1,5 +1,5 @@
 package net.qbert.handler
-
+/*
 import net.qbert.connection.{AwaitingConnectionOpen, AwaitingConnectionTuneOk, AwaitingConnectionStartOk, ConnectionState}
 import net.qbert.framing.{Method, AMQP}
 import net.qbert.state.{StateMachine, StateAwareProcessor}
@@ -17,5 +17,6 @@ trait StateAwareMethodHandler extends MethodHandler with StateAwareProcessor[Con
   }
 }
 
-class StateAwareMethodHandlerImpl(session: AMQProtocolSession, val stateMachine: StateMachine[ConnectionState, Method])
-  extends SimpleMethodHandler(session) with StateAwareMethodHandler
+class StateAwareMethodHandlerImpl(conn: AMQProtocolSession, val stateMachine: StateMachine[ConnectionState, Method])
+  extends SimpleMethodHandler(conn) with StateAwareMethodHandler
+*/

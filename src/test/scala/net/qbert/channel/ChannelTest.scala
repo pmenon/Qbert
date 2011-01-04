@@ -1,15 +1,16 @@
 package net.qbert.channel
 
-import net.qbert.protocol.AMQProtocolSession
+import net.qbert.connection.AMQConnection
 import net.qbert.framing.amqp_091.{ AMQP_091 => AMQP }
+
 import org.specs._
 import org.specs.mock.Mockito
 
 class ChannelTest extends Specification with Mockito {
 
   "An AMQP channel" should {
-    val mockSession = mock[AMQProtocolSession]
-    val channel = new AMQChannel(1, mockSession)
+    val mockConnection = mock[AMQConnection]
+    val channel = new AMQChannel(1, mockConnection)
     /*
     "handle Basic.Publish frames" in {
 

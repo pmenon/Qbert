@@ -1,56 +1,17 @@
 package net.qbert.protocol
 
-import net.qbert.connection.{ AMQConnection, ConnectionState, AwaitingConnectionStartOk, AwaitingConnectionTuneOk, AwaitingConnectionOpen, Opened, Stopped }
-import net.qbert.framing.{ AMQP, AMQDataBlock, ContentHeader, ContentBody, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method }
-import net.qbert.handler.{MethodHandlingError, UnexpectedMethodHandling, MethodHandler, MethodErrorResponse, MethodSuccessResponse, NoResponseMethodSuccess}
-import net.qbert.logging.Logging
+import net.qbert.broker.QbertBroker
+import net.qbert.framing.{ AMQDataBlock, ContentHeader, ContentBody, Frame, AMQFieldTable, AMQLongString, ProtocolInitiation, Method, AMQFrameCodec }
+import net.qbert.handler.{MethodHandlingError, MethodHandler }
+import net.qbert.network.{ Connection, FrameHandler, FrameReceiver, FrameReader }
+import net.qbert.util.Logging
 import net.qbert.state.StateMachine
 
-class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with StateMachine[ConnectionState, Frame] with Logging {
-  
+
+class AMQProtocolDriver(broker: QbertBroker, conn: Connection) extends FrameReceiver with Logging {
+  val decoder = AMQFrameCodec.decoder
   var methodHandler: MethodHandler = null
-
-  // State transitions for an AMQ connection
-  when(AwaitingConnectionStartOk){ (frame) => frame.payload match {
-    case startOk : AMQP.Connection.StartOk => methodHandler.handleConnectionStartOk(0, startOk) match {
-      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
-      case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionTuneOk)
-      case NoResponseMethodSuccess => goTo(AwaitingConnectionTuneOk)
-    }
-    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
-  }}
-
-  when(AwaitingConnectionTuneOk){ (frame) => frame.payload match {
-    case tuneOk : AMQP.Connection.TuneOk => methodHandler.handleConnectionTuneOk(0, tuneOk) match {
-      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
-      case MethodSuccessResponse(res) => handleResponse(res); goTo(AwaitingConnectionOpen)
-      case NoResponseMethodSuccess => goTo(AwaitingConnectionOpen)
-    }
-    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
-  }}
-
-  when(AwaitingConnectionOpen){ (frame) => frame.payload match {
-    case open: AMQP.Connection.Open => methodHandler.handleConnectionOpen(0, open) match {
-      case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
-      case MethodSuccessResponse(res) => handleResponse(res); goTo(Opened)
-      case NoResponseMethodSuccess => goTo(Opened)
-    }
-    case _ => handleError(UnexpectedMethodHandling("tt")); goTo(Stopped)
-  }}
-
-  when(Opened){ (frame) => frame.payload.typeId match {
-    case Frame.FRAME_METHOD =>
-      methodReceived(frame.channelId, frame.payload.asInstanceOf[Method]) match {
-        case MethodErrorResponse(error) => handleError(error); goTo(Stopped)
-        case MethodSuccessResponse(res) => handleResponse(res); stay
-        case NoResponseMethodSuccess => stay
-      }
-    case Frame.FRAME_CONTENT => contentHeaderReceived(frame.channelId, frame.payload.asInstanceOf[ContentHeader]); stay
-    case Frame.FRAME_BODY => contentBodyReceived(frame.channelId, frame.payload.asInstanceOf[ContentBody]); stay
-  }}
-
-  // The beginning state
-  setState(AwaitingConnectionStartOk)
+  var handler: FrameHandler = new AMQPConnectionNegotiator(conn, this)
 
   // This method indicates an error and should close the connection
   def handleError(e: MethodHandlingError) = {
@@ -68,23 +29,20 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
    *
    * If the data is a regular frame, it goes through the state manager
    */
-  def dataBlockReceived(datablock: AMQDataBlock) = {
-    datablock match {
-      case pi: ProtocolInitiation => protocolInitiation(pi)
-      case frame: Frame => actOn(frame)//connectionStateMachine.actOn(frame)
-      case _ => error("unknown frame object received")
-    }
-  }
+  def frameReceived(fr: FrameReader) = handler.frameReceived(fr)
 
+  /*
   override def init(version: ProtocolVersion) = {
     super.init(version)
-    methodHandler = MethodHandler(this)//, connectionStateMachine)
+    methodHandler = MethodHandler(this)
   }
+  */
     
   def versionOk(major: Int, minor: Int) = true
 
+  /*
   def protocolInitiation(pi: ProtocolInitiation) = {
-    logInfo("Protocol Initiation Received ... {}", pi)
+    log.info("Protocol Initiation Received ... {}", pi)
     
     val response = if (versionOk(pi.major, pi.minor)) {
       init(ProtocolVersion(pi.major, pi.minor))
@@ -98,22 +56,23 @@ class AMQProtocolDriver(val conn: AMQConnection) extends AMQProtocolSession with
   }
 
   def methodReceived(channelId: Int, method: Method) = {
-    logInfo("Method received : {}", method)
+    log.info("Method received : {}", method)
     methodHandler.handleMethod(channelId, method)
   }
 
   def contentHeaderReceived(channelId: Int, header: ContentHeader) = {
-    logInfo("Content header received : {}", header)
+    log.info("Content header received : {}", header)
     getChannel(channelId).map( (channel) =>
       channel.publishContentHeader(header)
     ).orElse(error("Channel " + channelId + " does not exist"))
   }
 
   def contentBodyReceived(channelId: Int, body: ContentBody) = {
-    logInfo("Content body received : {} ", body)
+    log.info("Content body received : {} ", body)
     getChannel(channelId).map( (channel) =>
       channel.publishContentBody(body)
     ).orElse(error("Channel " + channelId + " does not exist"))
   }
+  */
 
 }

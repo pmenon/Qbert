@@ -1,11 +1,14 @@
 import org.specs._
 
+import net.qbert.broker.QbertBroker
+
 import com.rabbitmq.client.ConnectionFactory
 import com.rabbitmq.client.QueueingConsumer
 
 class QbertNetworkTest extends Specification {
 
   class ConsumingThread(queueName: String, expectedMsgCount: Int) extends Thread {
+    var body: Array[Byte] = _
 
     override def run = {
       val cf1 = new ConnectionFactory
@@ -20,7 +23,7 @@ class QbertNetworkTest extends Specification {
 
       val t1 = System.nanoTime
       for(i <- 1 to expectedMsgCount) {
-        consumer1.nextDelivery()
+        body = consumer1.nextDelivery().getBody
       }
       val t2 = System.nanoTime
       println("consumer done in " + (t2-t1) + " nano seconds")
@@ -30,9 +33,9 @@ class QbertNetworkTest extends Specification {
 
   "Simple Qbert connection" should {
     "succeed protocol negotiation" in {
-      
-      //val broker = new QbertBroker()
-      //broker.start(Array())
+
+      val broker = new QbertBroker()
+      broker.start(Array())
 
       val cf = new ConnectionFactory
       cf.setHost("localhost")
@@ -42,18 +45,18 @@ class QbertNetworkTest extends Specification {
       val c = cf.newConnection()
       val ch = c.createChannel()
 
-      val queueName = "queue1"
+      val queueName1 = "queue1"
       val exchangeName = "exchange1"
       val routeName = "route1"
 
-      ch.queueDeclare(queueName, false, false, false, new java.util.HashMap)
+      ch.queueDeclare(queueName1, false, false, false, new java.util.HashMap)
       ch.exchangeDeclare(exchangeName, "direct")
-      ch.queueBind(queueName, exchangeName, routeName)
+      ch.queueBind(queueName1, exchangeName, routeName)
 
-      val expectedMsgCount = 200000
-      val consumer = new ConsumingThread(queueName, expectedMsgCount)
-      consumer.start()
-      Thread.sleep(1000)
+      //val expectedMsgCount = 200000
+      val expectedMsgCount = 1
+      val consumer1 = new ConsumingThread(queueName1, expectedMsgCount)
+      consumer1.start()
 
       val msg = "Hello, world1!".getBytes("utf-8")
       val t0 = System.nanoTime
@@ -62,11 +65,12 @@ class QbertNetworkTest extends Specification {
       }
       val duration = System.nanoTime - t0
 
-      consumer.join()
+      consumer1.join()
 
-      println("\n\n TPS = " + expectedMsgCount/(duration/1000000000.0) + "\n\n")
+      msg mustEq consumer1.body
+      //println("\n\n TPS = " + expectedMsgCount/(duration/1000000000.0) + "\n\n")
+      broker.stop()
 
-      //broker.stop()
     }
   }
 } 

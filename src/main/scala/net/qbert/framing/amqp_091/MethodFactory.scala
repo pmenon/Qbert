@@ -3,7 +3,7 @@ package net.qbert.framing.amqp_091
 import net.qbert.network.FrameReader
 import net.qbert.framing.{AMQShortString, AMQLongString, AMQFieldTable, MethodFactory}
 import net.qbert.protocol.ProtocolVersion
-import net.qbert.logging.Logging
+import net.qbert.util.Logging
 
 class MethodFactory_091 extends MethodFactory with Logging {
   import net.qbert.framing.amqp_091.AMQP_091._
@@ -34,7 +34,7 @@ class MethodFactory_091 extends MethodFactory with Logging {
       case (60, 20) => Some(Basic.Consume(fr))
       case (60, 40) => Some(Basic.Publish(fr))
 
-      case _ => logInfo("No method matches classId={} methodId={}", classId, methodId); None
+      case _ => log.error("No method matches classId={} methodId={}", classId, methodId); None
     }
 
     method
