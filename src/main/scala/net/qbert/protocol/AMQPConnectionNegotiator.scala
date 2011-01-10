@@ -5,7 +5,7 @@ import net.qbert.framing.{ AMQP, AMQDataBlock, AMQFrameCodec, AMQFieldTable, AMQ
 import net.qbert.network.{ Connection, FrameHandler }
 import net.qbert.state.StateMachine
 import net.qbert.util.Logging
-import net.qbert.virtualhost.AMQVirtualHost
+import net.qbert.virtualhost.{ AMQVirtualHost, VirtualHostRegistry }
 
 /**
  * AMQPConnectionNegotiator
@@ -84,7 +84,7 @@ class AMQPConnectionNegotiator(val conn: Connection, val driver: AMQProtocolDriv
       // set the version for the connection
       version = ProtocolVersion(pi.major, pi.minor)
 
-      // set the protocol version the decoder should be using
+      // set the protocol version the createDecoder should be using
       decoder.setVersion(version)
 
       // create a connection start method to respond to the client
@@ -129,6 +129,7 @@ class AMQPConnectionNegotiator(val conn: Connection, val driver: AMQProtocolDriv
     conn.writeFrame(openok.generateFrame(0))
 
     // create connection properties and an AMQConnection to handle any further frames on this connection
+    virtualHost = VirtualHostRegistry.get(connOpen.virtualHost.get).getOrElse(VirtualHostRegistry.get("/").get)
     val connectionProperties = new ConnectionProperties(version, maxChannels, maxFrameSize, heartbeat)
     val connection = new AMQConnection(conn, decoder, connectionProperties, virtualHost)
 

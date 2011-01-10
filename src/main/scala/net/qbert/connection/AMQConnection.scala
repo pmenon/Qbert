@@ -3,7 +3,7 @@ package net.qbert.connection
 import net.qbert.channel.ChannelManager
 import net.qbert.protocol.ProtocolVersion
 import net.qbert.framing.{ AMQDataBlock, ContentBody, ContentHeader, Frame, Method, MethodFactory }
-import net.qbert.handler.{ MethodErrorResponse, MethodSuccessResponse }
+import net.qbert.handler.{ MethodErrorResponse, MethodSuccessResponse, NoResponseMethodSuccess }
 import net.qbert.network.{ Connection, FrameDecoder, FrameHandler }
 import net.qbert.util.Logging
 import net.qbert.virtualhost.AMQVirtualHost
@@ -46,6 +46,7 @@ class AMQConnection(val conn: Connection, val decoder: FrameDecoder, val connPro
     result match {
       case MethodErrorResponse(error) => handleError()
       case MethodSuccessResponse(response) => handleResponse(response)
+      case NoResponseMethodSuccess =>
     }
   }
 

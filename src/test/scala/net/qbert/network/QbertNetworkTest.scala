@@ -58,16 +58,16 @@ class QbertNetworkTest extends Specification {
       val consumer1 = new ConsumingThread(queueName1, expectedMsgCount)
       consumer1.start()
 
-      val msg = "Hello, world1!".getBytes("utf-8")
+      val msg = "Hello, world1!"
       val t0 = System.nanoTime
       for(i <- 1 to expectedMsgCount) {
-        ch.basicPublish(exchangeName, routeName, null, msg)
+        ch.basicPublish(exchangeName, routeName, null, msg.getBytes("utf-8"))
       }
       val duration = System.nanoTime - t0
 
       consumer1.join()
 
-      msg mustEq consumer1.body
+      msg must_== new String(consumer1.body, "utf-8")
       //println("\n\n TPS = " + expectedMsgCount/(duration/1000000000.0) + "\n\n")
       broker.stop()
 

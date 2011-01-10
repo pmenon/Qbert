@@ -11,7 +11,7 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory
 import org.jboss.netty.channel.{ ChannelHandlerContext, ChannelStateEvent, ExceptionEvent, MessageEvent, SimpleChannelHandler }
 
 import net.qbert.broker.QbertComponent
-import net.qbert.network.{ Connection, FrameReader, FrameReceiver }
+import net.qbert.network.{ Connection, FrameReader, FrameDecoder, FrameReceiver }
 import net.qbert.util.Logging
 
 /**
@@ -40,9 +40,9 @@ class NettyConnector(receiver: (Connection) => FrameReceiver) extends QbertCompo
 
     serverBootstrap.setPipelineFactory(new ChannelPipelineFactory {
       override def getPipeline = {
-        // encoder, decoder and handler
-        val nettyEncoder = NettyCodec.encoder
-        val nettyDecoder = NettyCodec.decoder
+        // createEncoder, createDecoder and handler
+        val nettyEncoder = NettyCodec.createEncoder
+        val nettyDecoder = NettyCodec.createDecoder
         val nettyHandler = new NettyDelegatingHandler(receiver)
 
         val stages = Array[ChannelHandler](nettyEncoder, nettyDecoder, nettyHandler)

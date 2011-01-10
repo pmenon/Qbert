@@ -8,21 +8,21 @@ class AMQChannelPipelineFactory extends ChannelPipelineFactory {
   override def getPipeline = {
     //val p = Channels.pipeline
 
-    val encoder = NettyCodec.encoder
-    val decoder = NettyCodec.decoder
+    val createEncoder = NettyCodec.createEncoder
+    val createDecoder = NettyCodec.createDecoder
     val handler = new NettyDelegatingHandler
    
-    // add encoder
+    // add createEncoder
     /*
-    p.addLast(NettyCodec.frameEncoder, NettyCodec.encoder)
+    p.addLast(NettyCodec.frameEncoder, NettyCodec.createEncoder)
 
-    p.addLast(NettyCodec.initialDecoder, NettyCodec.decoder)
+    p.addLast(NettyCodec.initialDecoder, NettyCodec.createDecoder)
     //p addLast("executor", new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(16, 1048576, 1048576)));
     p.addLast("handler", new NettyDelegatingHandler)
 
     p
     */
-    val stages = Array[ChannelHandler](encoder, decoder, handler)
+    val stages = Array[ChannelHandler](createEncoder, createDecoder, handler)
     val pipeline = new StaticChannelPipeline( stages: _* )
 
     pipeline

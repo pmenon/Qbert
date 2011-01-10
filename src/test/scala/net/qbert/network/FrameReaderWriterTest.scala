@@ -22,7 +22,7 @@ class FrameReaderWriterTest extends Specification {
 
       val frame2 = decoder.decode(fr)
 
-      frame2.payload must haveClass[AMQP.Connection.Start]
+      frame2.payload must haveSuperClass[AMQP.Connection.Start]
       val m1 = frame2.payload.asInstanceOf[AMQP.Connection.Start]
 
       m1.typeId must ==(m.typeId)

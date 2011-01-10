@@ -17,7 +17,7 @@ class SimpleMethodHandler(val conn: AMQConnection) extends MethodHandler with Lo
   def handleMethod(channelId: Int, method: Method) = method.handle(channelId, this)
 
   def handleConnectionStartOk(channelId: Int, startOk: AMQP.Connection.StartOk) = {
-    log.info("Connection.Start received: " + startOk)
+    log.info("Connection.Start received: {}", startOk)
 
     val tuneMessage = conn.methodFactory.createConnectionTune(100,100,100)
     val response = tuneMessage.generateFrame(0)
@@ -27,13 +27,13 @@ class SimpleMethodHandler(val conn: AMQConnection) extends MethodHandler with Lo
 
 
   def handleConnectionTuneOk(channelId: Int, tuneOk: AMQP.Connection.TuneOk) = {
-    log.info("Connection.TuneOk received: " + tuneOk)
+    log.info("Connection.TuneOk received: {}", tuneOk)
     // do nothing ... for now
     success()
   }
 
   def handleConnectionOpen(channelId: Int, connOpen: AMQP.Connection.Open) = {
-    log.info("Connection.Open received: " + connOpen)
+    log.info("Connection.Open received: {}", connOpen)
 
     val res = VirtualHostRegistry.get(connOpen.virtualHost.get).map{(host) =>
       //conn.virtualHost = Some(host)
@@ -49,7 +49,7 @@ class SimpleMethodHandler(val conn: AMQConnection) extends MethodHandler with Lo
   }
 
   def handleChannelOpen(channelId: Int, channelOpen: AMQP.Channel.Open) = {
-    log.info("Channel.Open received: " + channelOpen)
+    log.info("Channel.Open received: {}", channelOpen)
 
     val c = conn.createChannel(channelId)
     val openok = conn.methodFactory.createChannelOpenOk(AMQLongString("channel-"+c.channelId.toString))
@@ -84,6 +84,7 @@ class SimpleMethodHandler(val conn: AMQConnection) extends MethodHandler with Lo
   }
 
   def handleQueueDeclare(channelId: Int, declare: AMQP.Queue.Declare) = {
+    log.info("Handling Queue.Declare method ...")
     val queueConfig = QueueConfiguration(declare.queueName.get, conn.virtualHost, declare.durable, declare.exclusive, declare.autoDelete)
 
     conn.virtualHost.createQueue(queueConfig)

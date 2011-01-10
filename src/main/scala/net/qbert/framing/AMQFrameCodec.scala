@@ -12,7 +12,7 @@ object AMQFrameCodec {
 }
 
 /**
- * An AMQP Frame encoder needs to accept a frame, encode it the w
+ * An AMQP Frame createEncoder needs to accept a frame, encode it the w
  * wire-level format and return the result
  */
 trait AMQFrameEncoder {

@@ -8,7 +8,7 @@ import net.qbert.util.Logging
 import net.qbert.state.StateMachine
 
 
-class AMQProtocolDriver(broker: QbertBroker, conn: Connection) extends FrameReceiver with Logging {
+class AMQProtocolDriver(val broker: QbertBroker, val conn: Connection) extends FrameReceiver with Logging {
   val decoder = AMQFrameCodec.decoder
   var methodHandler: MethodHandler = null
   var handler: FrameHandler = new AMQPConnectionNegotiator(conn, this)
